@@ -14,11 +14,26 @@ export interface Novel {
   created_at: string
 }
 
+export interface WritingFlow {
+  id: string
+  name: string
+  prompt: string
+  enabled: boolean
+}
+
 export const useChatStore = defineStore('chat', () => {
   const novels = ref<Novel[]>([])
   const currentNovel = ref<Novel | null>(null)
   const messages = ref<Message[]>([])
   const loading = ref(false)
+  const sessionTokens = ref(0)
+
+  const writingFlows = ref<WritingFlow[]>([
+    { id: 'outline', name: '大纲', prompt: '请帮我设计小说大纲：', enabled: true },
+    { id: 'volume', name: '卷纲', prompt: '请帮我设计这一卷的卷纲：', enabled: true },
+    { id: 'body', name: '正文', prompt: '请续写以下内容：', enabled: true }
+  ])
+  const currentFlow = ref<string | null>(null)
 
   const fetchedNovels = async () => {
     const res = await axios.get('/api/novels')
@@ -40,8 +55,17 @@ export const useChatStore = defineStore('chat', () => {
   const sendMessage = async (content: string, promptButtons: string[] = []) => {
     if (!currentNovel.value) return
 
+    // 如果选择了流程，添加流程提示词前缀
+    let finalContent = content
+    if (currentFlow.value) {
+      const flow = writingFlows.value.find(f => f.id === currentFlow.value)
+      if (flow?.prompt) {
+        finalContent = flow.prompt + '\n' + content
+      }
+    }
+
     loading.value = true
-    messages.value.push({ id: 0, role: 'user', content })
+    messages.value.push({ id: 0, role: 'user', content: finalContent })
 
     try {
       const res = await fetch('/api/chat', {
@@ -49,7 +73,7 @@ export const useChatStore = defineStore('chat', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           novel_id: currentNovel.value.id,
-          messages: [{ role: 'user', content }],
+          messages: [{ role: 'user', content: finalContent }],
           prompt_buttons: promptButtons
         })
       })
@@ -87,6 +111,13 @@ export const useChatStore = defineStore('chat', () => {
 
           try {
             const data = JSON.parse(jsonStr)
+            const usage = data.usage
+            if (usage) {
+              const prompt_tokens = usage.prompt_tokens || 0
+              const completion_tokens = usage.completion_tokens || 0
+              const total_tokens = usage.total_tokens || (prompt_tokens + completion_tokens)
+              sessionTokens.value += total_tokens
+            }
             const choices = data.choices
             if (choices && choices.length > 0) {
               const delta = choices[0].delta
@@ -127,6 +158,17 @@ export const useChatStore = defineStore('chat', () => {
     if (currentNovel.value?.id === id) {
       currentNovel.value = null
       messages.value = []
+    }
+  }
+
+  const updateNovelTitle = async (id: number, title: string) => {
+    await axios.put('/api/novels/' + id, { title })
+    const novel = novels.value.find(n => n.id === id)
+    if (novel) {
+      novel.title = title
+    }
+    if (currentNovel.value?.id === id) {
+      currentNovel.value.title = title
     }
   }
 
@@ -206,6 +248,42 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
+  const fetchWritingFlows = async () => {
+    const res = await axios.get('/api/model-configs')
+    if (res.data.length > 0) {
+      const config = res.data[0]
+      const templates = config.prompt_templates
+      if (templates) {
+        try {
+          const obj = JSON.parse(templates)
+          if (obj.writing_flows) {
+            writingFlows.value = obj.writing_flows
+          }
+        } catch (e) {}
+      }
+    }
+  }
+
+  const saveWritingFlows = async () => {
+    const res = await axios.get('/api/model-configs')
+    if (res.data.length > 0) {
+      const config = res.data[0]
+      const templates = JSON.stringify({ writing_flows: writingFlows.value })
+      await axios.put('/api/model-configs/1', {
+        ...config,
+        prompt_templates: templates
+      })
+    }
+  }
+
+  const selectFlow = async (flowId: string | null) => {
+    currentFlow.value = flowId
+    if (currentNovel.value) {
+      const res = await axios.get(`/api/novels/${currentNovel.value.id}/messages?flow_type=${flowId || ''}`)
+      messages.value = res.data
+    }
+  }
+
   const getModelsForProvider = (provider: string) => {
     return providerTemplates[provider]?.models || []
   }
@@ -215,11 +293,13 @@ export const useChatStore = defineStore('chat', () => {
     currentNovel,
     messages,
     loading,
+    sessionTokens,
     fetchedNovels,
     createNovel,
     selectNovel,
     sendMessage,
     deleteNovel,
+    updateNovelTitle,
     systemConfig,
     promptTemplates,
     fetchSystemConfig,
@@ -227,6 +307,11 @@ export const useChatStore = defineStore('chat', () => {
     fetchPromptTemplates,
     savePromptTemplates,
     getModelsForProvider,
-    providerTemplates
+    providerTemplates,
+    writingFlows,
+    currentFlow,
+    fetchWritingFlows,
+    saveWritingFlows,
+    selectFlow
   }
 })
