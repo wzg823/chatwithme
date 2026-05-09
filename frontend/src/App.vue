@@ -61,15 +61,20 @@
           class="w-full border rounded-lg p-3"
           :disabled="store.loading"
         />
-        <div class="mt-2 flex gap-2">
-          <button
-            v-for="btn in promptButtons"
-            :key="btn.name"
-            @click="sendWithPrompt(btn)"
-            class="px-3 py-1 border rounded hover:bg-gray-100"
-          >
-            {{ btn.name }}
-          </button>
+        <div class="mt-2 flex items-center justify-between">
+          <div class="flex gap-2">
+            <button
+              v-for="btn in promptButtons"
+              :key="btn.name"
+              @click="sendWithPrompt(btn)"
+              class="px-3 py-1 border rounded hover:bg-gray-100"
+            >
+              {{ btn.name }}
+            </button>
+          </div>
+          <div class="text-sm text-gray-500">
+            Tokens: {{ store.sessionTokens.toLocaleString() }}
+          </div>
         </div>
       </div>
     </div>
