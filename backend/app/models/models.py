@@ -22,6 +22,7 @@ class Message(Base):
     role = Column(String)
     content = Column(Text)
     novel_id = Column(Integer, ForeignKey("novels.id"))
+    flow_type = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     novel = relationship("Novel", back_populates="messages")

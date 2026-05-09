@@ -8,10 +8,10 @@
         :key="novel.id"
         class="p-2 rounded cursor-pointer hover:bg-gray-100 flex items-center justify-between"
         :class="{ 'bg-blue-100': store.currentNovel?.id === novel.id }"
-        @click="selectAndScroll(novel)"
+        @click="store.selectNovel(novel)"
       >
         <span class="flex-1 truncate">{{ novel.title }}</span>
-        <button @click.stop="confirmDelete(novel)" class="text-red-400 hover:text-red-600 ml-2">×</button>
+        <button @click.stop="confirmDelete(novel)" class="text-gray-400 hover:text-red-500 ml-2">×</button>
       </div>
       <button
         @click="createNewNovel"
@@ -31,13 +31,19 @@
     <div class="flex-1 flex flex-col">
       <div class="h-14 border-b border-gray-200 flex items-center px-4 justify-between">
         <span class="font-medium">{{ store.currentNovel?.title || '选择小说开始创作' }}</span>
-        <select v-model="selectedModel" @change="onModelChange" class="border rounded px-2 py-1">
-          <option v-for="model in store.getModelsForProvider(store.systemConfig.provider)" :key="model" :value="model">{{ model.toUpperCase() }}</option>
-          <option v-if="store.systemConfig.provider === 'custom'" value="">自定义</option>
-        </select>
+        <div class="flex items-center gap-2">
+          <button @click="toggleDark" class="p-1.5 rounded hover:bg-gray-100" title="切换深色模式">
+            <Sun v-if="!isDark" class="w-5 h-5" />
+            <Moon v-else class="w-5 h-5" />
+          </button>
+          <select v-model="selectedModel" @change="onModelChange" class="border rounded px-2 py-1">
+            <option v-for="model in store.getModelsForProvider(store.systemConfig.provider)" :key="model" :value="model">{{ model.toUpperCase() }}</option>
+            <option v-if="store.systemConfig.provider === 'custom'" value="">自定义</option>
+          </select>
+        </div>
       </div>
 
-      <div ref="messageContainer" class="flex-1 overflow-y-auto p-4">
+      <div class="flex-1 overflow-y-auto p-4" ref="messageContainer">
         <div
           v-for="msg in store.messages"
           :key="msg.id"
@@ -46,7 +52,7 @@
         >
           <div
             class="inline-block p-3 rounded-lg max-w-[80%]"
-            :class="msg.role === 'user' ? 'bg-blue-500 text-white' : 'bg-gray-200'"
+            :class="msg.role === 'user' ? 'bg-[var(--user-msg-bg)] text-white' : 'bg-[var(--ai-msg-bg)]'"
           >
             {{ msg.content }}
           </div>
@@ -94,7 +100,7 @@
 
     <!-- 配置弹窗 -->
     <div v-if="showConfig" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg w-[500px] max-h-[80vh] overflow-y-auto">
+      <div class="bg-[var(--bg-primary)] rounded-lg w-[500px] max-h-[80vh] overflow-y-auto">
         <div class="flex items-center justify-between p-4 border-b">
           <span class="font-bold">⚙️ 系统配置</span>
           <button @click="showConfig = false">✕</button>
@@ -214,6 +220,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, nextTick, watch } from 'vue'
+import { Sun, Moon } from 'lucide-vue-next'
 import { useChatStore } from './stores/chat'
 import type { Novel } from './stores/chat'
 
@@ -222,6 +229,23 @@ const inputMessage = ref('')
 const selectedModel = ref('gpt-4')
 const activeTab = ref('世界观')
 const messageContainer = ref<HTMLElement | null>(null)
+const isDark = ref(false)
+
+const toggleDark = () => {
+  isDark.value = !isDark.value
+  document.documentElement.classList.toggle('dark', isDark.value)
+  localStorage.setItem('theme', isDark.value ? 'dark' : 'light')
+}
+
+const scrollToBottom = async () => {
+  await nextTick()
+  if (messageContainer.value) {
+    messageContainer.value.scrollTop = messageContainer.value.scrollHeight
+  }
+}
+
+// 监听 messages 变化，自动滚动到底部
+watch(() => store.messages.length, scrollToBottom)
 const promptButtons = ref([
   { name: '总结', content: '请总结以上内容要点：' },
   { name: '润色', content: '请润色以下内容：' },
@@ -229,31 +253,22 @@ const promptButtons = ref([
   { name: '扩写', content: '请扩写：' }
 ])
 
-watch(() => store.messages.length, () => {
-  nextTick(scrollToBottom)
-})
-
 onMounted(async () => {
+  // 读取保存的主题设置
+  const savedTheme = localStorage.getItem('theme')
+  if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+    isDark.value = true
+    document.documentElement.classList.add('dark')
+  }
   await store.fetchedNovels()
   await store.fetchSystemConfig()
   selectedModel.value = store.systemConfig.model
+  // 自动选择第一个小说并加载对话
   if (store.novels.length > 0) {
     await store.selectNovel(store.novels[0])
     scrollToBottom()
   }
 })
-
-const scrollToBottom = () => {
-  if (messageContainer.value) {
-    messageContainer.value.scrollTop = messageContainer.value.scrollHeight
-  }
-}
-
-const selectAndScroll = async (novel: Novel) => {
-  await store.selectNovel(novel)
-  await nextTick()
-  scrollToBottom()
-}
 
 const createNewNovel = async () => {
   const title = prompt('请输入小说标题:')
