@@ -61,20 +61,15 @@
           class="w-full border rounded-lg p-3"
           :disabled="store.loading"
         />
-        <div class="mt-2 flex items-center justify-between">
-          <div class="flex gap-2">
-            <button
-              v-for="btn in promptButtons"
-              :key="btn.name"
-              @click="sendWithPrompt(btn)"
-              class="px-3 py-1 border rounded hover:bg-gray-100"
-            >
-              {{ btn.name }}
-            </button>
-          </div>
-          <div class="text-sm text-gray-500">
-            Tokens: {{ store.sessionTokens.toLocaleString() }}
-          </div>
+        <div class="mt-2 flex gap-2">
+          <button
+            v-for="btn in promptButtons"
+            :key="btn.name"
+            @click="sendWithPrompt(btn)"
+            class="px-3 py-1 border rounded hover:bg-gray-100"
+          >
+            {{ btn.name }}
+          </button>
         </div>
       </div>
     </div>
@@ -123,6 +118,14 @@
         <div class="p-4">
           <div v-if="configTab === 'api'">
             <div class="mb-4">
+              <label class="block text-sm mb-1">Provider</label>
+              <select v-model="store.systemConfig.provider" class="w-full border rounded p-2">
+                <option value="openai">OpenAI</option>
+                <option value="deepseek">DeepSeek</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+            <div class="mb-4">
               <label class="block text-sm mb-1">API Key</label>
               <input
                 v-model="store.systemConfig.apiKey"
@@ -132,11 +135,61 @@
             </div>
             <div class="mb-4">
               <label class="block text-sm mb-1">模型</label>
-              <select v-model="store.systemConfig.defaultModel" class="w-full border rounded p-2">
-                <option value="gpt-4">GPT-4</option>
-                <option value="gpt-4o">GPT-4o</option>
-                <option value="gpt-4o-mini">GPT-4o-mini</option>
+              <select
+                v-model="store.systemConfig.model"
+                class="w-full border rounded p-2"
+                :disabled="store.systemConfig.provider === 'custom'"
+              >
+                <option
+                  v-for="model in store.getModelsForProvider(store.systemConfig.provider)"
+                  :key="model"
+                  :value="model"
+                >
+                  {{ model.toUpperCase() }}
+                </option>
+                <option v-if="store.systemConfig.provider === 'custom'" value="">
+                  自定义模型
+                </option>
               </select>
+            </div>
+            <div v-if="store.systemConfig.provider === 'custom'" class="mb-4">
+              <label class="block text-sm mb-1">Base URL</label>
+              <input
+                v-model="store.systemConfig.baseUrl"
+                type="text"
+                placeholder="https://api.example.com/v1"
+                class="w-full border rounded p-2"
+              />
+            </div>
+            <div v-if="store.systemConfig.provider === 'custom' && !store.getModelsForProvider(store.systemConfig.provider).includes(store.systemConfig.model)" class="mb-4">
+              <label class="block text-sm mb-1">模型名称</label>
+              <input
+                v-model="store.systemConfig.model"
+                type="text"
+                placeholder="e.g. claude-3-opus"
+                class="w-full border rounded p-2"
+              />
+            </div>
+            <div class="mb-4">
+              <label class="block text-sm mb-1">Temperature: {{ store.systemConfig.temperature }}</label>
+              <input
+                v-model="store.systemConfig.temperature"
+                type="range"
+                min="0"
+                max="2"
+                step="0.1"
+                class="w-full"
+              />
+            </div>
+            <div class="mb-4">
+              <label class="block text-sm mb-1">Max Tokens: {{ store.systemConfig.maxTokens }}</label>
+              <input
+                v-model="store.systemConfig.maxTokens"
+                type="number"
+                min="1"
+                max="128000"
+                class="w-full border rounded p-2"
+              />
             </div>
           </div>
           <div v-if="configTab === 'prompt'">

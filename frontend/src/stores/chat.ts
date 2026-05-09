@@ -19,8 +19,6 @@ export const useChatStore = defineStore('chat', () => {
   const currentNovel = ref<Novel | null>(null)
   const messages = ref<Message[]>([])
   const loading = ref(false)
-  const sessionTokens = ref(0)
-  let usageProcessed = false
 
   const fetchedNovels = async () => {
     const res = await axios.get('/api/novels')
@@ -35,7 +33,6 @@ export const useChatStore = defineStore('chat', () => {
 
   const selectNovel = async (novel: Novel) => {
     currentNovel.value = novel
-    sessionTokens.value = 0  // Reset session tokens when switching novels
     const res = await axios.get('/api/novels/' + novel.id + '/messages')
     messages.value = res.data
   }
@@ -44,7 +41,6 @@ export const useChatStore = defineStore('chat', () => {
     if (!currentNovel.value) return
 
     loading.value = true
-    usageProcessed = false
     messages.value.push({ id: 0, role: 'user', content })
 
     try {
@@ -65,21 +61,6 @@ export const useChatStore = defineStore('chat', () => {
         if (result.done) break
         const chunk = decoder.decode(result.value)
         assistantContent += chunk
-
-        // 检测 usage 格式
-        try {
-          if (!usageProcessed) {
-            const json = JSON.parse(chunk)
-            if (json.usage) {
-              const prompt = json.usage.prompt_tokens || 0
-              const completion = json.usage.completion_tokens || 0
-              sessionTokens.value += prompt + completion
-              usageProcessed = true
-            }
-          }
-        } catch {
-          // Not JSON, ignore
-        }
       }
 
       messages.value.push({ id: 0, role: 'assistant', content: assistantContent })
@@ -100,9 +81,12 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   const systemConfig = ref({
+    provider: 'openai',
+    baseUrl: '',
+    model: 'gpt-4',
     apiKey: '',
-    defaultModel: 'gpt-4',
-    isDefault: false
+    temperature: 0.7,
+    maxTokens: 4096
   })
 
   const promptTemplates = ref([
@@ -112,25 +96,45 @@ export const useChatStore = defineStore('chat', () => {
     { name: '扩写', content: '请扩写：' }
   ])
 
+  const providerTemplates = {
+    openai: {
+      base_url: 'https://api.openai.com/v1',
+      models: ['gpt-4', 'gpt-4o', 'gpt-4o-mini', 'gpt-3.5-turbo']
+    },
+    deepseek: {
+      base_url: 'https://api.deepseek.com',
+      models: ['deepseek-chat']
+    },
+    custom: {
+      base_url: '',
+      models: []
+    }
+  }
+
   const fetchSystemConfig = async () => {
     const res = await axios.get('/api/model-configs')
     if (res.data.length > 0) {
       const config = res.data[0]
+      const provider = config.provider || 'openai'
       systemConfig.value = {
+        provider: provider,
+        baseUrl: config.base_url || providerTemplates[provider]?.base_url || '',
+        model: config.model || 'gpt-4',
         apiKey: config.api_key || '',
-        defaultModel: config.model,
-        isDefault: false
+        temperature: config.temperature || 0.7,
+        maxTokens: config.max_tokens || 4096
       }
     }
   }
 
   const saveSystemConfig = async () => {
     await axios.post('/api/model-configs', {
-      provider: 'openai',
-      model: systemConfig.value.defaultModel,
+      provider: systemConfig.value.provider,
+      base_url: systemConfig.value.baseUrl,
+      model: systemConfig.value.model,
       api_key: systemConfig.value.apiKey,
-      temperature: 0.7,
-      max_tokens: 4096
+      temperature: systemConfig.value.temperature,
+      max_tokens: systemConfig.value.maxTokens
     })
   }
 
@@ -150,12 +154,15 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
+  const getModelsForProvider = (provider: string) => {
+    return providerTemplates[provider]?.models || []
+  }
+
   return {
     novels,
     currentNovel,
     messages,
     loading,
-    sessionTokens,
     fetchedNovels,
     createNovel,
     selectNovel,
@@ -166,6 +173,8 @@ export const useChatStore = defineStore('chat', () => {
     fetchSystemConfig,
     saveSystemConfig,
     fetchPromptTemplates,
-    savePromptTemplates
+    savePromptTemplates,
+    getModelsForProvider,
+    providerTemplates
   }
 })
