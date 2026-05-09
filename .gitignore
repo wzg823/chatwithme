@@ -1,1 +1,43 @@
 .worktrees/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv/
+*.egg-info/
+dist/
+build/
+server.log
+*.log
+
+# Node.js
+node_modules/
+frontend/node_modules/
+frontend/frontend.log
+
+# Playwright MCP
+.playwright-mcp/
+*.yml.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Vite
+dist/
+
+# Claude Code / Superpowers
+.superpowers/
+.claude/skills/ui-ux-pro-max/scripts/__pycache__/
+.claude/settings.local.json
