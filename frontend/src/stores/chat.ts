@@ -68,6 +68,7 @@ export const useChatStore = defineStore('chat', () => {
     messages.value.push({ id: 0, role: 'user', content: finalContent })
 
     try {
+      // 使用 fetch 处理 SSE 流式响应（浏览器端最佳实践）
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -79,11 +80,11 @@ export const useChatStore = defineStore('chat', () => {
       })
 
       if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`)
+        throw new Error(`服务器错误: ${res.status}`)
       }
 
       if (!res.body) {
-        throw new Error('No response body')
+        throw new Error('无响应内容')
       }
 
       const reader = res.body.getReader()
@@ -96,6 +97,7 @@ export const useChatStore = defineStore('chat', () => {
         const chunk = decoder.decode(result.value)
         // 按行分割处理 SSE 数据
         const lines = chunk.split('\n')
+
         for (const line of lines) {
           const trimmed = line.trim()
           if (!trimmed) continue
@@ -128,7 +130,7 @@ export const useChatStore = defineStore('chat', () => {
               }
             }
           } catch (e) {
-            // 忽略解析错误
+            // 静默忽略解析错误，继续处理下一行
           }
         }
       }
@@ -141,12 +143,25 @@ export const useChatStore = defineStore('chat', () => {
             role: 'assistant',
             content: assistantContent
           })
-        } catch (e) {
-          console.error('Failed to save assistant message:', e)
+        } catch (saveError) {
+          console.error('保存助手回复失败:', saveError)
         }
       }
-    } catch (e) {
-      console.error(e)
+    } catch (e: any) {
+      // 用户友好的错误消息
+      let userMessage = '抱歉，发生了错误，请稍后重试'
+      if (e.message) {
+        if (e.message.includes('服务器错误')) {
+          userMessage = e.message
+        } else if (e.message.includes('fetch') || e.message.includes('network')) {
+          userMessage = '网络连接失败，请检查网络后重试'
+        } else if (e.message === '无响应内容') {
+          userMessage = '服务器无响应，请稍后重试'
+        }
+      }
+
+      console.error('聊天请求失败:', e)
+      messages.value.push({ id: 0, role: 'assistant', content: userMessage })
     } finally {
       loading.value = false
     }
@@ -259,7 +274,9 @@ export const useChatStore = defineStore('chat', () => {
           if (obj.writing_flows) {
             writingFlows.value = obj.writing_flows
           }
-        } catch (e) {}
+        } catch (e) {
+          // 静默忽略 JSON 解析错误，使用默认值
+        }
       }
     }
   }
