@@ -8,10 +8,10 @@
         :key="novel.id"
         class="p-2 rounded cursor-pointer hover:bg-gray-100 flex items-center justify-between"
         :class="{ 'bg-blue-100': store.currentNovel?.id === novel.id }"
-        @click="store.selectNovel(novel)"
+        @click="selectAndScroll(novel)"
       >
         <span class="flex-1 truncate">{{ novel.title }}</span>
-        <button @click.stop="confirmDelete(novel)" class="text-red-400 hover:text-red-600 ml-2">🗑️</button>
+        <button @click.stop="confirmDelete(novel)" class="text-red-400 hover:text-red-600 ml-2">×</button>
       </div>
       <button
         @click="createNewNovel"
@@ -37,7 +37,7 @@
         </select>
       </div>
 
-      <div class="flex-1 overflow-y-auto p-4">
+      <div ref="messageContainer" class="flex-1 overflow-y-auto p-4">
         <div
           v-for="msg in store.messages"
           :key="msg.id"
@@ -213,7 +213,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick, watch } from 'vue'
 import { useChatStore } from './stores/chat'
 import type { Novel } from './stores/chat'
 
@@ -221,6 +221,7 @@ const store = useChatStore()
 const inputMessage = ref('')
 const selectedModel = ref('gpt-4')
 const activeTab = ref('世界观')
+const messageContainer = ref<HTMLElement | null>(null)
 const promptButtons = ref([
   { name: '总结', content: '请总结以上内容要点：' },
   { name: '润色', content: '请润色以下内容：' },
@@ -228,11 +229,31 @@ const promptButtons = ref([
   { name: '扩写', content: '请扩写：' }
 ])
 
+watch(() => store.messages.length, () => {
+  nextTick(scrollToBottom)
+})
+
 onMounted(async () => {
   await store.fetchedNovels()
   await store.fetchSystemConfig()
   selectedModel.value = store.systemConfig.model
+  if (store.novels.length > 0) {
+    await store.selectNovel(store.novels[0])
+    scrollToBottom()
+  }
 })
+
+const scrollToBottom = () => {
+  if (messageContainer.value) {
+    messageContainer.value.scrollTop = messageContainer.value.scrollHeight
+  }
+}
+
+const selectAndScroll = async (novel: Novel) => {
+  await store.selectNovel(novel)
+  await nextTick()
+  scrollToBottom()
+}
 
 const createNewNovel = async () => {
   const title = prompt('请输入小说标题:')
