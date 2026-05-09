@@ -20,6 +20,7 @@ export const useChatStore = defineStore('chat', () => {
   const messages = ref<Message[]>([])
   const loading = ref(false)
   const sessionTokens = ref(0)
+  let usageProcessed = false
 
   const fetchedNovels = async () => {
     const res = await axios.get('/api/novels')
@@ -34,6 +35,7 @@ export const useChatStore = defineStore('chat', () => {
 
   const selectNovel = async (novel: Novel) => {
     currentNovel.value = novel
+    sessionTokens.value = 0  // Reset session tokens when switching novels
     const res = await axios.get('/api/novels/' + novel.id + '/messages')
     messages.value = res.data
   }
@@ -42,6 +44,7 @@ export const useChatStore = defineStore('chat', () => {
     if (!currentNovel.value) return
 
     loading.value = true
+    usageProcessed = false
     messages.value.push({ id: 0, role: 'user', content })
 
     try {
@@ -65,11 +68,14 @@ export const useChatStore = defineStore('chat', () => {
 
         // 检测 usage 格式
         try {
-          const json = JSON.parse(chunk)
-          if (json.usage) {
-            const prompt = json.usage.prompt_tokens || 0
-            const completion = json.usage.completion_tokens || 0
-            sessionTokens.value += prompt + completion
+          if (!usageProcessed) {
+            const json = JSON.parse(chunk)
+            if (json.usage) {
+              const prompt = json.usage.prompt_tokens || 0
+              const completion = json.usage.completion_tokens || 0
+              sessionTokens.value += prompt + completion
+              usageProcessed = true
+            }
           }
         } catch {
           // Not JSON, ignore
