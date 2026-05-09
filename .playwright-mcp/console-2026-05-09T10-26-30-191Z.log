@@ -1,0 +1,70 @@
+[11145783ms] [WARNING] [Vue warn]: Unhandled error during execution of render function 
+  at <App> @ http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:2224
+[11145783ms] [ERROR] TypeError: Cannot read properties of undefined (reading 'toLocaleString')
+    at Proxy._sfc_render (http://localhost:5180/src/App.vue?t=1778333535875:234:71)
+    at renderComponentRoot (http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:6748:17)
+    at ReactiveEffect.componentUpdateFn [as fn] (http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:8399:26)
+    at ReactiveEffect.run (http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:528:19)
+    at http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:2677:16
+    at Array.forEach (<anonymous>)
+    at rerender (http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:2669:25)
+    at Object.rerender (http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:2743:14)
+    at http://localhost:5180/src/App.vue?t=1778333530023:413:25
+    at http://localhost:5180/@vite/client:34:58 @ http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:2744
+[11145783ms] [WARNING] [HMR] Something went wrong during Vue component hot-reload. Full reload required. @ http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:2745
+[11145786ms] [WARNING] [Vue warn]: Unhandled error during execution of render function 
+  at <App> @ http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:2224
+[11145786ms] [WARNING] [Vue warn]: Unhandled error during execution of component update 
+  at <App> @ http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:2224
+[11145798ms] TypeError: Cannot read properties of undefined (reading 'toLocaleString')
+    at Proxy._sfc_render (http://localhost:5180/src/App.vue?t=1778333535875:234:71)
+    at renderComponentRoot (http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:6748:17)
+    at ReactiveEffect.componentUpdateFn [as fn] (http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:8399:26)
+    at ReactiveEffect.run (http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:528:19)
+    at ReactiveEffect.runIfDirty (http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:566:12)
+    at callWithErrorHandling (http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:2372:33)
+    at flushJobs (http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:2580:9)
+[12480651ms] [WARNING] [Vue warn]: Unhandled error during execution of render function 
+  at <App> @ http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:2224
+[12480651ms] [ERROR] TypeError: Cannot read properties of undefined (reading 'toLocaleString')
+    at Proxy._sfc_render (http://localhost:5180/src/App.vue?t=1778334870508:234:71)
+    at renderComponentRoot (http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:6748:17)
+    at ReactiveEffect.componentUpdateFn [as fn] (http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:8321:46)
+    at ReactiveEffect.run (http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:528:19)
+    at setupRenderEffect (http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:8456:5)
+    at mountComponent (http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:8228:7)
+    at processComponent (http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:8180:9)
+    at patch (http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:7677:11)
+    at render2 (http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:9000:7)
+    at context.reload (http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:6427:15) @ http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:2744
+[12480651ms] [WARNING] [HMR] Something went wrong during Vue component hot-reload. Full reload required. @ http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:2745
+[12517582ms] [WARNING] [Vue warn]: Unhandled error during execution of render function 
+  at <App> @ http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:2224
+[12517582ms] [ERROR] TypeError: Cannot read properties of undefined (reading 'toLocaleString')
+    at Proxy._sfc_render (http://localhost:5180/src/App.vue?t=1778334870508:234:71)
+    at renderComponentRoot (http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:6748:17)
+    at ReactiveEffect.componentUpdateFn [as fn] (http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:8321:46)
+    at ReactiveEffect.run (http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:528:19)
+    at setupRenderEffect (http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:8456:5)
+    at mountComponent (http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:8228:7)
+    at processComponent (http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:8180:9)
+    at patch (http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:7677:11)
+    at render2 (http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:9000:7)
+    at context.reload (http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:6427:15) @ http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:2744
+[12517582ms] [WARNING] [HMR] Something went wrong during Vue component hot-reload. Full reload required. @ http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:2745
+[12524285ms] [WARNING] [Vue warn]: Unhandled error during execution of render function 
+  at <App> @ http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:2224
+[12524285ms] [ERROR] TypeError: Cannot read properties of undefined (reading 'toLocaleString')
+    at Proxy._sfc_render (http://localhost:5180/src/App.vue?t=1778334914407:265:71)
+    at renderComponentRoot (http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:6748:17)
+    at ReactiveEffect.componentUpdateFn [as fn] (http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:8321:46)
+    at ReactiveEffect.run (http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:528:19)
+    at http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:2677:16
+    at Array.forEach (<anonymous>)
+    at rerender (http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:2669:25)
+    at Object.rerender (http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:2743:14)
+    at http://localhost:5180/src/App.vue?t=1778334907659:601:25
+    at http://localhost:5180/@vite/client:34:58 @ http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:2744
+[12524285ms] [WARNING] [HMR] Something went wrong during Vue component hot-reload. Full reload required. @ http://localhost:5180/node_modules/.vite/deps/chunk-OD33Q54J.js?v=e49e3b19:2745
+[12704870ms] [ERROR] SyntaxError: The requested module '/src/stores/chat.ts?t=1778335095037' does not provide an export named 'useChatStore' @ http://localhost:5180/@vite/client:173
+[12704870ms] [ERROR] [hmr] Failed to reload /src/App.vue. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5180/@vite/client:175

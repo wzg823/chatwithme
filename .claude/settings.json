@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:minimax-algeng-chat-tts.oss-cn-wulanchabu.aliyuncs.com)",
+      "Read(//c/Users/wzg823/Desktop/**)",
+      "Read(//c/Users/wzg823/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.7/skills/brainstorming/**)",
+      "Bash(scripts/start-server.sh --project-dir .)",
+      "Bash(/c/Users/wzg823/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.7/skills/brainstorming/scripts/start-server.sh --project-dir .)",
+      "Bash(python -m http.server 64456 --directory .superpowers/brainstorm/236-1778134476/content)",
+      "Bash(curl -s http://localhost:64456/)",
+      "Bash(pkill -f \"start-server.sh\")",
+      "Bash(pkill -f \"http.server 64456\")",
+      "Bash(curl -s http://localhost:54110/)",
+      "Bash(python serve.py)",
+      "Bash(curl -s http://localhost:54110/design-part1.html)",
+      "Bash(git config *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git worktree *)",
+      "Bash(pip install *)",
+      "Bash(uvicorn app.main:app --port 8000)",
+      "Bash(curl -s http://localhost:8000/api/health)",
+      "Bash(curl -s -X POST http://localhost:8000/api/novels -H \"Content-Type: application/json\" -d '{\"title\": \"测试小说\"}')",
+      "Bash(python -c \"from app.models.database import Base, engine; Base.metadata.create_all\\(bind=engine\\); print\\('Database created'\\)\")",
+      "Bash(curl -s -X POST \"http://localhost:8000/api/novels\" -H \"Content-Type: application/json\" -d \"{\\\\\"title\\\\\": \\\\\"测试小说\\\\\"}\")",
+      "Bash(curl -s -X POST \"http://localhost:8000/api/novels\" -H \"Content-Type: application/json\" -d @-)",
+      "Bash(pkill -f \"uvicorn\")",
+      "Bash(uvicorn app.main:app --port 8001)",
+      "Bash(curl -s http://localhost:8003/api/health)",
+      "Bash(curl -s -X POST \"http://localhost:8003/api/novels\" -H \"Content-Type: application/json\" -d @-)",
+      "Bash(curl -s http://localhost:8003/api/novels)",
+      "Bash(npm install *)",
+      "mcp__chrome-devtools__handle_dialog",
+      "mcp__chrome-devtools__take_snapshot",
+      "Bash(npx vite *)"
+    ]
+  }
+}

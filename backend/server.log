@@ -1,0 +1,12 @@
+C:\Users\wzg823\AppData\Local\Programs\Python\Python310\lib\site-packages\pydantic\_internal\_fields.py:149: UserWarning: Field "model_config_id" has conflict with protected namespace "model_".
+
+You may be able to resolve this warning by setting `model_config['protected_namespaces'] = ()`.
+  warnings.warn(
+INFO:     Started server process [13748]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+ERROR:    [Errno 10048] error while attempting to bind on address ('0.0.0.0', 8000): 通常每个套接字地址(协议/网络地址/端口)只允许使用一次。
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+Tables created successfully
+Model configs already exist (4), skipping init
