@@ -17,20 +17,31 @@ class OpenAIAdapter(ModelAdapter):
             extra["thinking"] = config["thinking"]
         return extra
 
-    def send_message(self, messages: list, config: dict) -> str:
-        url = f"{self.base_url}/chat/completions"
-        headers = {
+    def _build_request_headers(self) -> dict:
+        """构建请求头"""
+        return {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
         }
+
+    def _build_request_data(self, messages: list, config: dict, stream: bool = False) -> dict:
+        """构建请求数据"""
         data = {
             "model": config.get("model", self.model),
             "messages": messages,
             "temperature": config.get("temperature", 0.7),
             "max_tokens": config.get("max_tokens", 4096)
         }
+        if stream:
+            data["stream"] = True
         extra_params = self._build_extra_params(config)
         data.update(extra_params)
+        return data
+
+    def send_message(self, messages: list, config: dict) -> str:
+        url = f"{self.base_url}/chat/completions"
+        headers = self._build_request_headers()
+        data = self._build_request_data(messages, config)
 
         with httpx.Client(timeout=30.0) as client:
             response = client.post(url, json=data, headers=headers)
@@ -42,19 +53,8 @@ class OpenAIAdapter(ModelAdapter):
 
     def stream_message(self, messages: list, config: dict):
         url = f"{self.base_url}/chat/completions"
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
-        data = {
-            "model": config.get("model", self.model),
-            "messages": messages,
-            "temperature": config.get("temperature", 0.7),
-            "max_tokens": config.get("max_tokens", 4096),
-            "stream": True
-        }
-        extra_params = self._build_extra_params(config)
-        data.update(extra_params)
+        headers = self._build_request_headers()
+        data = self._build_request_data(messages, config, stream=True)
 
         usage = None
 
@@ -71,7 +71,7 @@ class OpenAIAdapter(ModelAdapter):
                 if x_usage:
                     try:
                         usage = json.loads(x_usage)
-                    except:
+                    except json.JSONDecodeError:
                         pass
 
         # If not from headers, get usage via non-streaming request
@@ -85,18 +85,8 @@ class OpenAIAdapter(ModelAdapter):
     def _get_usage(self, messages: list, config: dict) -> dict:
         """Get token usage via non-streaming request"""
         url = f"{self.base_url}/chat/completions"
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
-        data = {
-            "model": config.get("model", self.model),
-            "messages": messages,
-            "temperature": config.get("temperature", 0.7),
-            "max_tokens": config.get("max_tokens", 4096)
-        }
-        extra_params = self._build_extra_params(config)
-        data.update(extra_params)
+        headers = self._build_request_headers()
+        data = self._build_request_data(messages, config)
 
         try:
             with httpx.Client(timeout=30.0) as client:
@@ -105,6 +95,6 @@ class OpenAIAdapter(ModelAdapter):
                 result = response.json()
                 if "usage" in result:
                     return result["usage"]
-        except Exception:
+        except (httpx.HTTPError, ValueError):
             pass
         return None
