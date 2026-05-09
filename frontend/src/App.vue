@@ -84,7 +84,7 @@
     <div class="w-72 border-l border-gray-200 bg-gray-50 p-4">
       <div class="flex gap-2 mb-4">
         <button
-          v-for="tab in ['世界观', '角色', '大纲', '伏笔', 'AI配置']"
+          v-for="tab in ['世界观', '角色', '大纲', '伏笔', 'AI配置', '流程']"
           :key="tab"
           @click="activeTab = tab"
           class="px-2 py-1 text-sm"
@@ -95,6 +95,21 @@
       </div>
       <div class="text-gray-500 text-sm">
         {{ activeTab }} 内容展示区
+      </div>
+      <div v-if="activeTab === '流程'" class="space-y-2">
+        <div
+          v-for="flow in store.writingFlows"
+          :key="flow.id"
+          class="p-2 border rounded cursor-pointer hover:bg-gray-100 flex items-center justify-between"
+          :class="{ 'bg-blue-100': store.currentFlow === flow.id }"
+          @click="store.selectFlow(flow.id)"
+        >
+          <span>{{ flow.name }}</span>
+          <span v-if="!flow.enabled" class="text-xs text-gray-400">已禁用</span>
+        </div>
+        <div v-if="!store.writingFlows.length" class="text-gray-400 text-sm">
+          暂无创作流程，请在配置中添加
+        </div>
       </div>
     </div>
 
