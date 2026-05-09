@@ -56,7 +56,3 @@ def chat(request: ChatRequest, db: Session = Depends(get_db)):
             yield chunk
 
     return StreamingResponse(generate(), media_type="text/event-stream")
-
-@router.get("/novels/{novel_id}/messages")
-def get_messages(novel_id: int, db: Session = Depends(get_db)):
-    return db.query(Message).filter(Message.novel_id == novel_id).all()

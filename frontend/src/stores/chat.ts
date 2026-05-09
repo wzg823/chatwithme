@@ -44,15 +44,25 @@ export const useChatStore = defineStore('chat', () => {
     messages.value.push({ id: 0, role: 'user', content })
 
     try {
-      const res = await axios.post('/api/chat', {
-        novel_id: currentNovel.value.id,
-        messages: [{ role: 'user', content }],
-        prompt_buttons: promptButtons
-      }, {
-        responseType: 'stream'
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          novel_id: currentNovel.value.id,
+          messages: [{ role: 'user', content }],
+          prompt_buttons: promptButtons
+        })
       })
 
-      const reader = res.data.getReader()
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`)
+      }
+
+      if (!res.body) {
+        throw new Error('No response body')
+      }
+
+      const reader = res.body.getReader()
       const decoder = new TextDecoder()
       let assistantContent = ''
 
@@ -60,10 +70,50 @@ export const useChatStore = defineStore('chat', () => {
         const result = await reader.read()
         if (result.done) break
         const chunk = decoder.decode(result.value)
-        assistantContent += chunk
+        // 按行分割处理 SSE 数据
+        const lines = chunk.split('\n')
+        for (const line of lines) {
+          const trimmed = line.trim()
+          if (!trimmed) continue
+
+          let jsonStr = trimmed
+          // 移除 "data: " 前缀
+          if (jsonStr.startsWith('data: ')) {
+            jsonStr = jsonStr.slice(6)
+          }
+
+          if (jsonStr === '[DONE]') continue
+          if (!jsonStr.startsWith('{')) continue
+
+          try {
+            const data = JSON.parse(jsonStr)
+            const choices = data.choices
+            if (choices && choices.length > 0) {
+              const delta = choices[0].delta
+              // 只提取字符串 content
+              const content = typeof delta?.content === 'string' ? delta.content : ''
+              if (content) {
+                assistantContent += content
+              }
+            }
+          } catch (e) {
+            // 忽略解析错误
+          }
+        }
       }
 
       messages.value.push({ id: 0, role: 'assistant', content: assistantContent })
+      // 保存 AI 回复到数据库
+      if (currentNovel.value && assistantContent) {
+        try {
+          await axios.post(`/api/novels/${currentNovel.value.id}/messages`, {
+            role: 'assistant',
+            content: assistantContent
+          })
+        } catch (e) {
+          console.error('Failed to save assistant message:', e)
+        }
+      }
     } catch (e) {
       console.error(e)
     } finally {
@@ -118,17 +168,19 @@ export const useChatStore = defineStore('chat', () => {
       const provider = config.provider || 'openai'
       systemConfig.value = {
         provider: provider,
+        // 优先使用保存的 base_url，否则使用模板默认值
         baseUrl: config.base_url || providerTemplates[provider]?.base_url || '',
-        model: config.model || 'gpt-4',
+        model: config.model || providerTemplates[provider]?.models?.[0] || 'gpt-4',
         apiKey: config.api_key || '',
-        temperature: config.temperature || 0.7,
+        temperature: config.temperature ?? 0.7,
         maxTokens: config.max_tokens || 4096
       }
     }
   }
 
   const saveSystemConfig = async () => {
-    await axios.post('/api/model-configs', {
+    // 更新 id=1 的配置（默认配置）
+    await axios.put('/api/model-configs/1', {
       provider: systemConfig.value.provider,
       base_url: systemConfig.value.baseUrl,
       model: systemConfig.value.model,

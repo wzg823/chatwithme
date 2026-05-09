@@ -1,10 +1,24 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.models.database import get_db
-from app.models.models import Novel
+from app.models.models import Novel, Message
 from app.models.schemas import Novel as NovelSchema, NovelCreate
+from pydantic import BaseModel
 
 router = APIRouter()
+
+class MessageCreate(BaseModel):
+    role: str
+    content: str
+
+class MessageSchema(BaseModel):
+    id: int
+    role: str
+    content: str
+    novel_id: int
+
+    class Config:
+        from_attributes = True
 
 @router.get("/novels", response_model=list[NovelSchema])
 def get_novels(db: Session = Depends(get_db)):
@@ -28,3 +42,15 @@ def delete_novel(novel_id: int, db: Session = Depends(get_db)):
     db.delete(novel)
     db.commit()
     return {"deleted": True}
+
+@router.get("/novels/{novel_id}/messages", response_model=list[MessageSchema])
+def get_novel_messages(novel_id: int, db: Session = Depends(get_db)):
+    return db.query(Message).filter(Message.novel_id == novel_id).all()
+
+@router.post("/novels/{novel_id}/messages", response_model=MessageSchema)
+def create_novel_message(novel_id: int, message: MessageCreate, db: Session = Depends(get_db)):
+    msg = Message(role=message.role, content=message.content, novel_id=novel_id)
+    db.add(msg)
+    db.commit()
+    db.refresh(msg)
+    return msg

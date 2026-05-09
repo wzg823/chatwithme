@@ -31,9 +31,9 @@
     <div class="flex-1 flex flex-col">
       <div class="h-14 border-b border-gray-200 flex items-center px-4 justify-between">
         <span class="font-medium">{{ store.currentNovel?.title || '选择小说开始创作' }}</span>
-        <select v-model="selectedModel" class="border rounded px-2 py-1">
-          <option value="gpt-4">GPT-4</option>
-          <option value="claude-3">Claude 3</option>
+        <select v-model="selectedModel" @change="onModelChange" class="border rounded px-2 py-1">
+          <option v-for="model in store.getModelsForProvider(store.systemConfig.provider)" :key="model" :value="model">{{ model.toUpperCase() }}</option>
+          <option v-if="store.systemConfig.provider === 'custom'" value="">自定义</option>
         </select>
       </div>
 
@@ -228,8 +228,10 @@ const promptButtons = ref([
   { name: '扩写', content: '请扩写：' }
 ])
 
-onMounted(() => {
-  store.fetchedNovels()
+onMounted(async () => {
+  await store.fetchedNovels()
+  await store.fetchSystemConfig()
+  selectedModel.value = store.systemConfig.model
 })
 
 const createNewNovel = async () => {
@@ -261,12 +263,19 @@ const configTab = ref('api')
 const openConfig = async () => {
   showConfig.value = true
   await store.fetchSystemConfig()
-  await store.fetchPromptTemplates()
+  // TODO: 启用 prompt templates 需要后端 prompts router
+  // await store.fetchPromptTemplates()
 }
 
 const saveConfig = async () => {
   await store.saveSystemConfig()
-  await store.savePromptTemplates()
+  // TODO: 启用 prompt templates 需要后端 prompts router
+  // await store.savePromptTemplates()
   showConfig.value = false
+}
+
+const onModelChange = () => {
+  store.systemConfig.model = selectedModel.value
+  store.saveSystemConfig()
 }
 </script>
