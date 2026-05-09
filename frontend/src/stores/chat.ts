@@ -19,6 +19,7 @@ export const useChatStore = defineStore('chat', () => {
   const currentNovel = ref<Novel | null>(null)
   const messages = ref<Message[]>([])
   const loading = ref(false)
+  const sessionTokens = ref(0)
 
   const fetchedNovels = async () => {
     const res = await axios.get('/api/novels')
@@ -61,6 +62,18 @@ export const useChatStore = defineStore('chat', () => {
         if (result.done) break
         const chunk = decoder.decode(result.value)
         assistantContent += chunk
+
+        // 检测 usage 格式
+        try {
+          const json = JSON.parse(chunk)
+          if (json.usage) {
+            const prompt = json.usage.prompt_tokens || 0
+            const completion = json.usage.completion_tokens || 0
+            sessionTokens.value += prompt + completion
+          }
+        } catch {
+          // Not JSON, ignore
+        }
       }
 
       messages.value.push({ id: 0, role: 'assistant', content: assistantContent })
@@ -136,6 +149,7 @@ export const useChatStore = defineStore('chat', () => {
     currentNovel,
     messages,
     loading,
+    sessionTokens,
     fetchedNovels,
     createNovel,
     selectNovel,
