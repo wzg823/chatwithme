@@ -1,17 +1,30 @@
 <template>
   <div class="h-screen flex">
     <!-- Left: 小说列表 -->
-    <div class="w-56 border-r border-gray-200 bg-gray-50 p-4">
+    <div class="w-56 border-r border-gray-200 bg-gray-50 p-4 overflow-y-auto">
       <h2 class="font-bold text-lg mb-4">📚 我的小说</h2>
-      <div
-        v-for="novel in store.novels"
-        :key="novel.id"
-        class="p-2 rounded cursor-pointer hover:bg-gray-100 flex items-center justify-between"
-        :class="{ 'bg-blue-100': store.currentNovel?.id === novel.id }"
-        @click="store.selectNovel(novel)"
-      >
-        <span class="flex-1 truncate">{{ novel.title }}</span>
-        <button @click.stop="confirmDelete(novel)" class="text-gray-400 hover:text-red-500 ml-2">×</button>
+      <!-- 小说列表，带流程树 -->
+      <div v-for="novel in store.novels" :key="novel.id" class="mb-1">
+        <div
+          class="p-2 rounded cursor-pointer hover:bg-gray-100 flex items-center justify-between"
+          :class="{ 'bg-blue-100': store.currentNovel?.id === novel.id && !store.currentFlow }"
+          @click="toggleNovel(novel)"
+        >
+          <span class="flex-1 truncate">{{ novel.title }}</span>
+          <button @click.stop="confirmDelete(novel)" class="text-gray-400 hover:text-red-500 ml-2">×</button>
+        </div>
+        <!-- 流程树 -->
+        <div v-if="expandedNovel === novel.id && store.writingFlows.filter(f => f.enabled).length" class="ml-4 mt-1 space-y-1">
+          <div
+            v-for="flow in store.writingFlows.filter(f => f.enabled)"
+            :key="flow.id"
+            class="p-1.5 text-sm rounded cursor-pointer hover:bg-gray-200"
+            :class="{ 'bg-blue-100': store.currentFlow === flow.id }"
+            @click.stop="selectFlowForNovel(novel, flow.id)"
+          >
+            └ {{ flow.name }}
+          </div>
+        </div>
       </div>
       <button
         @click="createNewNovel"
@@ -81,13 +94,13 @@
     </div>
 
     <!-- Right: 写作辅助面板 -->
-    <div class="w-72 border-l border-gray-200 bg-gray-50 p-4">
-      <div class="flex gap-2 mb-4">
+    <div class="w-[500px] border-l border-gray-200 bg-gray-50 p-4">
+      <div class="flex gap-6 mb-4 border-b">
         <button
-          v-for="tab in ['世界观', '角色', '大纲', '伏笔', 'AI配置', '流程']"
+          v-for="tab in ['世界观', '角色', '大纲', '伏笔', 'AI配置']"
           :key="tab"
           @click="activeTab = tab"
-          class="px-2 py-1 text-sm"
+          class="px-4 py-2 text-base"
           :class="activeTab === tab ? 'border-b-2 border-blue-500' : ''"
         >
           {{ tab }}
@@ -95,20 +108,6 @@
       </div>
       <div class="text-gray-500 text-sm">
         {{ activeTab }} 内容展示区
-      </div>
-      <div v-if="activeTab === '流程'" class="space-y-2">
-        <div
-          v-for="flow in store.writingFlows.filter(f => f.enabled)"
-          :key="flow.id"
-          class="p-2 border rounded cursor-pointer hover:bg-gray-100 flex items-center justify-between"
-          :class="{ 'bg-blue-100': store.currentFlow === flow.id }"
-          @click="store.selectFlow(flow.id)"
-        >
-          <span>{{ flow.name }}</span>
-        </div>
-        <div v-if="!store.writingFlows.filter(f => f.enabled).length" class="text-gray-400 text-sm">
-          暂无创作流程，请在配置中添加
-        </div>
       </div>
     </div>
 
@@ -133,6 +132,13 @@
             :class="configTab === 'prompt' ? 'border-b-2 border-blue-500' : ''"
           >
             提示词模板
+          </button>
+          <button
+            @click="configTab = 'flows'"
+            class="px-4 py-2"
+            :class="configTab === 'flows' ? 'border-b-2 border-blue-500' : ''"
+          >
+            创作流程
           </button>
         </div>
         <div class="p-4">
@@ -221,10 +227,8 @@
                 rows="2"
               ></textarea>
             </div>
-
-            <hr class="my-4" />
-
-            <h3 class="font-bold mb-2">创作流程</h3>
+          </div>
+          <div v-if="configTab === 'flows'">
             <div v-for="(flow, idx) in store.writingFlows" :key="flow.id" class="mb-3 p-2 border rounded">
               <div class="flex items-center gap-2 mb-1">
                 <input
@@ -335,6 +339,24 @@ const confirmDelete = (novel: Novel) => {
   if (confirm(`确定删除小说《${novel.title}》吗？此操作不可撤销。`)) {
     store.deleteNovel(novel.id)
   }
+}
+
+const expandedNovel = ref<number | null>(null)
+
+const toggleNovel = async (novel: Novel) => {
+  if (expandedNovel.value === novel.id) {
+    expandedNovel.value = null
+  } else {
+    expandedNovel.value = novel.id
+  }
+  // Don't call any APIs - just expand and show flow selection
+  // User must explicitly click a flow to enter
+}
+
+const selectFlowForNovel = async (novel: Novel, flowId: string) => {
+  // 直接切换 novel 和 flow，不需要调用 selectNovel（它会循环所有接口）
+  store.currentNovel = novel
+  await store.selectFlow(flowId)
 }
 
 const showConfig = ref(false)

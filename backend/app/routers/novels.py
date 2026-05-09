@@ -4,6 +4,7 @@ from app.models.database import get_db
 from app.models.models import Novel, Message
 from app.models.schemas import Novel as NovelSchema, NovelCreate
 from pydantic import BaseModel
+from datetime import datetime
 
 router = APIRouter()
 
@@ -17,6 +18,7 @@ class MessageSchema(BaseModel):
     content: str
     novel_id: int
     flow_type: str | None = None
+    created_at: datetime | None = None
 
     class Config:
         from_attributes = True

@@ -103,6 +103,7 @@ class ModelConfig(Base):
     api_key = Column(String, nullable=True)
     temperature = Column(Float, default=0.7)
     max_tokens = Column(Integer, default=4096)
+    prompt_templates = Column(Text, nullable=True)  # 新增：存储 JSON 字符串
 
 class UserModelPreference(Base):
     __tablename__ = "user_model_preferences"

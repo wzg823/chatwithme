@@ -23,10 +23,26 @@ def chat(request: ChatRequest, db: Session = Depends(get_db)):
     if not novel:
         raise HTTPException(status_code=404, detail="Novel not found")
 
-    messages = [{"role": m.role, "content": m.content} for m in novel.messages]
+    flow_type = request.flow_type
+
+    # 按 flow_type 过滤加载历史消息
+    query = db.query(Message).filter(Message.novel_id == request.novel_id)
+    if flow_type:
+        query = query.filter(Message.flow_type == flow_type)
+    else:
+        query = query.filter(Message.flow_type == None)
+
+    history_messages = query.all()
+    messages = [{"role": m.role, "content": m.content} for m in history_messages]
+
     if request.messages:
         for user_msg in request.messages:
-            msg = Message(role=user_msg["role"], content=user_msg["content"], novel_id=novel.id)
+            msg = Message(
+                role=user_msg["role"],
+                content=user_msg["content"],
+                novel_id=novel.id,
+                flow_type=flow_type
+            )
             db.add(msg)
             messages.append({"role": user_msg["role"], "content": user_msg["content"]})
     db.commit()
@@ -51,8 +67,5 @@ def chat(request: ChatRequest, db: Session = Depends(get_db)):
     if not adapter:
         raise HTTPException(status_code=500, detail="Unsupported model provider")
 
-    def generate():
-        for chunk in adapter.stream_message(messages, {}):
-            yield chunk
-
-    return StreamingResponse(generate(), media_type="text/event-stream")
+    response = adapter.stream_message(messages, {"temperature": model_config.temperature, "max_tokens": model_config.max_tokens})
+    return StreamingResponse(response, media_type="text/event-stream")

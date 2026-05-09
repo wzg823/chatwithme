@@ -48,3 +48,4 @@ class ChatRequest(BaseModel):
     model_config_id: Optional[int] = None
     reasoning_effort: Optional[str] = None
     thinking: Optional[dict] = None
+    flow_type: Optional[str] = None

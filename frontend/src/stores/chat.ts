@@ -6,6 +6,7 @@ export interface Message {
   id: number
   role: 'user' | 'assistant'
   content: string
+  created_at?: string
 }
 
 export interface Novel {
@@ -48,9 +49,44 @@ export const useChatStore = defineStore('chat', () => {
 
   const selectNovel = async (novel: Novel) => {
     currentNovel.value = novel
-    const res = await axios.get('/api/novels/' + novel.id + '/messages')
-    messages.value = res.data
+    currentFlow.value = null  // 默认先设为 null
+
+    // 尝试获取默认会话（flow_type为空字符串）
+    let defaultChat: Message[] = []
+    try {
+      const res = await axios.get(`/api/novels/${novel.id}/messages?flow_type=`)
+      defaultChat = res.data
+    } catch (e) {
+      defaultChat = []
+    }
+
+    // 检查所有流程，找到最后会话的流程
+    let lastFlowId: string | null = null
+    let lastChatMessages: Message[] = defaultChat
+    let lastMsgId = defaultChat.length > 0 ? defaultChat[defaultChat.length - 1].id : 0
+
+    for (const flow of writingFlows.value) {
+      if (flow.enabled) {
+        try {
+          const flowRes = await axios.get(`/api/novels/${novel.id}/messages?flow_type=${flow.id}`)
+          if (flowRes.data.length > 0) {
+            const flowMsgs = flowRes.data as Message[]
+            const lastId = flowMsgs[flowMsgs.length - 1].id
+            if (lastId > lastMsgId) {
+              lastMsgId = lastId
+              lastFlowId = flow.id
+              lastChatMessages = flowMsgs
+            }
+          }
+        } catch (e) {}
+      }
+    }
+
+    messages.value = lastChatMessages
+    currentFlow.value = lastFlowId
   }
+
+  const showFlowSelect = ref(false)
 
   const sendMessage = async (content: string, promptButtons: string[] = []) => {
     if (!currentNovel.value) return
@@ -67,6 +103,14 @@ export const useChatStore = defineStore('chat', () => {
     loading.value = true
     messages.value.push({ id: 0, role: 'user', content: finalContent })
 
+    // Debug: 打印发送的数据
+    console.log('[DEBUG] 发送消息:', {
+      novel_id: currentNovel.value.id,
+      content: finalContent,
+      flow_type: currentFlow.value,
+      currentFlowType: typeof currentFlow.value
+    })
+
     try {
       // 使用 fetch 处理 SSE 流式响应（浏览器端最佳实践）
       const res = await fetch('/api/chat', {
@@ -75,7 +119,8 @@ export const useChatStore = defineStore('chat', () => {
         body: JSON.stringify({
           novel_id: currentNovel.value.id,
           messages: [{ role: 'user', content: finalContent }],
-          prompt_buttons: promptButtons
+          prompt_buttons: promptButtons,
+          flow_type: currentFlow.value
         })
       })
 
@@ -142,6 +187,8 @@ export const useChatStore = defineStore('chat', () => {
           await axios.post(`/api/novels/${currentNovel.value.id}/messages`, {
             role: 'assistant',
             content: assistantContent
+          }, {
+            params: { flow_type: currentFlow.value || undefined }
           })
         } catch (saveError) {
           console.error('保存助手回复失败:', saveError)
@@ -296,7 +343,17 @@ export const useChatStore = defineStore('chat', () => {
   const selectFlow = async (flowId: string | null) => {
     currentFlow.value = flowId
     if (currentNovel.value) {
+      // 如果 flowId 为空，获取空字符串对应
       const res = await axios.get(`/api/novels/${currentNovel.value.id}/messages?flow_type=${flowId || ''}`)
+      messages.value = res.data
+    }
+  }
+
+  // 切换到非流程的默认会话
+  const selectDefaultChat = async () => {
+    currentFlow.value = null
+    if (currentNovel.value) {
+      const res = await axios.get(`/api/novels/${currentNovel.value.id}/messages`)
       messages.value = res.data
     }
   }
@@ -329,6 +386,8 @@ export const useChatStore = defineStore('chat', () => {
     currentFlow,
     fetchWritingFlows,
     saveWritingFlows,
-    selectFlow
+    selectFlow,
+    selectDefaultChat,
+    showFlowSelect
   }
 })
