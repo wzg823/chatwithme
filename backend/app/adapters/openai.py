@@ -1,4 +1,5 @@
 import httpx
+import json
 from app.adapters.base import ModelAdapter
 
 class OpenAIAdapter(ModelAdapter):
@@ -55,9 +56,21 @@ class OpenAIAdapter(ModelAdapter):
         extra_params = self._build_extra_params(config)
         data.update(extra_params)
 
+        usage_info = None
+
         with httpx.Client(timeout=30.0) as client:
             with client.stream("POST", url, json=data, headers=headers) as response:
                 response.raise_for_status()
                 for chunk in response.iter_text():
                     if chunk.startswith("data: "):
                         yield chunk[6:]
+                    elif chunk.startswith("{"):
+                        try:
+                            chunk_data = json.loads(chunk)
+                            if "usage" in chunk_data:
+                                usage_info = chunk_data["usage"]
+                        except:
+                            pass
+
+        if usage_info:
+            yield "data: " + json.dumps({"usage": usage_info})

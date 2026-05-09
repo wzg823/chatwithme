@@ -6,6 +6,7 @@ export interface Message {
   id: number
   role: 'user' | 'assistant'
   content: string
+  created_at?: string
 }
 
 export interface Novel {
@@ -14,11 +15,26 @@ export interface Novel {
   created_at: string
 }
 
+export interface WritingFlow {
+  id: string
+  name: string
+  prompt: string
+  enabled: boolean
+}
+
 export const useChatStore = defineStore('chat', () => {
   const novels = ref<Novel[]>([])
   const currentNovel = ref<Novel | null>(null)
   const messages = ref<Message[]>([])
   const loading = ref(false)
+  const sessionTokens = ref(0)
+
+  const writingFlows = ref<WritingFlow[]>([
+    { id: 'outline', name: '大纲', prompt: '请帮我设计小说大纲：', enabled: true },
+    { id: 'volume', name: '卷纲', prompt: '请帮我设计这一卷的卷纲：', enabled: true },
+    { id: 'body', name: '正文', prompt: '请续写以下内容：', enabled: true }
+  ])
+  const currentFlow = ref<string | null>(null)
 
   const fetchedNovels = async () => {
     const res = await axios.get('/api/novels')
@@ -33,33 +49,87 @@ export const useChatStore = defineStore('chat', () => {
 
   const selectNovel = async (novel: Novel) => {
     currentNovel.value = novel
-    const res = await axios.get('/api/novels/' + novel.id + '/messages')
-    messages.value = res.data
+    currentFlow.value = null  // 默认先设为 null
+
+    // 尝试获取默认会话（flow_type为空字符串）
+    let defaultChat: Message[] = []
+    try {
+      const res = await axios.get(`/api/novels/${novel.id}/messages?flow_type=`)
+      defaultChat = res.data
+    } catch (e) {
+      defaultChat = []
+    }
+
+    // 检查所有流程，找到最后会话的流程
+    let lastFlowId: string | null = null
+    let lastChatMessages: Message[] = defaultChat
+    let lastMsgId = defaultChat.length > 0 ? defaultChat[defaultChat.length - 1].id : 0
+
+    for (const flow of writingFlows.value) {
+      if (flow.enabled) {
+        try {
+          const flowRes = await axios.get(`/api/novels/${novel.id}/messages?flow_type=${flow.id}`)
+          if (flowRes.data.length > 0) {
+            const flowMsgs = flowRes.data as Message[]
+            const lastId = flowMsgs[flowMsgs.length - 1].id
+            if (lastId > lastMsgId) {
+              lastMsgId = lastId
+              lastFlowId = flow.id
+              lastChatMessages = flowMsgs
+            }
+          }
+        } catch (e) {}
+      }
+    }
+
+    messages.value = lastChatMessages
+    currentFlow.value = lastFlowId
   }
+
+  const showFlowSelect = ref(false)
 
   const sendMessage = async (content: string, promptButtons: string[] = []) => {
     if (!currentNovel.value) return
 
+    // 如果选择了流程，添加流程提示词前缀
+    let finalContent = content
+    if (currentFlow.value) {
+      const flow = writingFlows.value.find(f => f.id === currentFlow.value)
+      if (flow?.prompt) {
+        finalContent = flow.prompt + '\n' + content
+      }
+    }
+
     loading.value = true
-    messages.value.push({ id: 0, role: 'user', content })
+    messages.value.push({ id: 0, role: 'user', content: finalContent })
+
+    // Debug: 打印发送的数据
+    console.log('[DEBUG] 发送消息:', {
+      novel_id: currentNovel.value.id,
+      content: finalContent,
+      flow_type: currentFlow.value,
+      currentFlowType: typeof currentFlow.value
+    })
 
     try {
+      // 使用 fetch 处理 SSE 流式响应（浏览器端最佳实践）
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           novel_id: currentNovel.value.id,
-          messages: [{ role: 'user', content }],
-          prompt_buttons: promptButtons
+          messages: [{ role: 'user', content: finalContent }],
+          prompt_buttons: promptButtons,
+          flow_type: currentFlow.value
         })
       })
 
       if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`)
+        throw new Error(`服务器错误: ${res.status}`)
       }
 
       if (!res.body) {
-        throw new Error('No response body')
+        throw new Error('无响应内容')
       }
 
       const reader = res.body.getReader()
@@ -72,6 +142,7 @@ export const useChatStore = defineStore('chat', () => {
         const chunk = decoder.decode(result.value)
         // 按行分割处理 SSE 数据
         const lines = chunk.split('\n')
+
         for (const line of lines) {
           const trimmed = line.trim()
           if (!trimmed) continue
@@ -87,6 +158,13 @@ export const useChatStore = defineStore('chat', () => {
 
           try {
             const data = JSON.parse(jsonStr)
+            const usage = data.usage
+            if (usage) {
+              const prompt_tokens = usage.prompt_tokens || 0
+              const completion_tokens = usage.completion_tokens || 0
+              const total_tokens = usage.total_tokens || (prompt_tokens + completion_tokens)
+              sessionTokens.value += total_tokens
+            }
             const choices = data.choices
             if (choices && choices.length > 0) {
               const delta = choices[0].delta
@@ -97,7 +175,7 @@ export const useChatStore = defineStore('chat', () => {
               }
             }
           } catch (e) {
-            // 忽略解析错误
+            // 静默忽略解析错误，继续处理下一行
           }
         }
       }
@@ -109,13 +187,28 @@ export const useChatStore = defineStore('chat', () => {
           await axios.post(`/api/novels/${currentNovel.value.id}/messages`, {
             role: 'assistant',
             content: assistantContent
+          }, {
+            params: { flow_type: currentFlow.value || undefined }
           })
-        } catch (e) {
-          console.error('Failed to save assistant message:', e)
+        } catch (saveError) {
+          console.error('保存助手回复失败:', saveError)
         }
       }
-    } catch (e) {
-      console.error(e)
+    } catch (e: any) {
+      // 用户友好的错误消息
+      let userMessage = '抱歉，发生了错误，请稍后重试'
+      if (e.message) {
+        if (e.message.includes('服务器错误')) {
+          userMessage = e.message
+        } else if (e.message.includes('fetch') || e.message.includes('network')) {
+          userMessage = '网络连接失败，请检查网络后重试'
+        } else if (e.message === '无响应内容') {
+          userMessage = '服务器无响应，请稍后重试'
+        }
+      }
+
+      console.error('聊天请求失败:', e)
+      messages.value.push({ id: 0, role: 'assistant', content: userMessage })
     } finally {
       loading.value = false
     }
@@ -127,6 +220,17 @@ export const useChatStore = defineStore('chat', () => {
     if (currentNovel.value?.id === id) {
       currentNovel.value = null
       messages.value = []
+    }
+  }
+
+  const updateNovelTitle = async (id: number, title: string) => {
+    await axios.put('/api/novels/' + id, { title })
+    const novel = novels.value.find(n => n.id === id)
+    if (novel) {
+      novel.title = title
+    }
+    if (currentNovel.value?.id === id) {
+      currentNovel.value.title = title
     }
   }
 
@@ -206,6 +310,54 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
+  const fetchWritingFlows = async () => {
+    const res = await axios.get('/api/model-configs')
+    if (res.data.length > 0) {
+      const config = res.data[0]
+      const templates = config.prompt_templates
+      if (templates) {
+        try {
+          const obj = JSON.parse(templates)
+          if (obj.writing_flows) {
+            writingFlows.value = obj.writing_flows
+          }
+        } catch (e) {
+          // 静默忽略 JSON 解析错误，使用默认值
+        }
+      }
+    }
+  }
+
+  const saveWritingFlows = async () => {
+    const res = await axios.get('/api/model-configs')
+    if (res.data.length > 0) {
+      const config = res.data[0]
+      const templates = JSON.stringify({ writing_flows: writingFlows.value })
+      await axios.put('/api/model-configs/1', {
+        ...config,
+        prompt_templates: templates
+      })
+    }
+  }
+
+  const selectFlow = async (flowId: string | null) => {
+    currentFlow.value = flowId
+    if (currentNovel.value) {
+      // 如果 flowId 为空，获取空字符串对应
+      const res = await axios.get(`/api/novels/${currentNovel.value.id}/messages?flow_type=${flowId || ''}`)
+      messages.value = res.data
+    }
+  }
+
+  // 切换到非流程的默认会话
+  const selectDefaultChat = async () => {
+    currentFlow.value = null
+    if (currentNovel.value) {
+      const res = await axios.get(`/api/novels/${currentNovel.value.id}/messages`)
+      messages.value = res.data
+    }
+  }
+
   const getModelsForProvider = (provider: string) => {
     return providerTemplates[provider]?.models || []
   }
@@ -215,11 +367,13 @@ export const useChatStore = defineStore('chat', () => {
     currentNovel,
     messages,
     loading,
+    sessionTokens,
     fetchedNovels,
     createNovel,
     selectNovel,
     sendMessage,
     deleteNovel,
+    updateNovelTitle,
     systemConfig,
     promptTemplates,
     fetchSystemConfig,
@@ -227,6 +381,13 @@ export const useChatStore = defineStore('chat', () => {
     fetchPromptTemplates,
     savePromptTemplates,
     getModelsForProvider,
-    providerTemplates
+    providerTemplates,
+    writingFlows,
+    currentFlow,
+    fetchWritingFlows,
+    saveWritingFlows,
+    selectFlow,
+    selectDefaultChat,
+    showFlowSelect
   }
 })

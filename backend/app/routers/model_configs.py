@@ -14,6 +14,7 @@ class ModelConfigCreate(BaseModel):
     api_key: Optional[str] = None
     temperature: float = 0.7
     max_tokens: int = 4096
+    prompt_templates: Optional[str] = None
 
 class ModelConfigResponse(ModelConfigCreate):
     id: int

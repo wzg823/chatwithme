@@ -22,6 +22,7 @@ class Message(Base):
     role = Column(String)
     content = Column(Text)
     novel_id = Column(Integer, ForeignKey("novels.id"))
+    flow_type = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     novel = relationship("Novel", back_populates="messages")
@@ -102,6 +103,7 @@ class ModelConfig(Base):
     api_key = Column(String, nullable=True)
     temperature = Column(Float, default=0.7)
     max_tokens = Column(Integer, default=4096)
+    prompt_templates = Column(Text, nullable=True)  # 新增：存储 JSON 字符串
 
 class UserModelPreference(Base):
     __tablename__ = "user_model_preferences"

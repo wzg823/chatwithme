@@ -1,17 +1,30 @@
 <template>
   <div class="h-screen flex">
     <!-- Left: 小说列表 -->
-    <div class="w-56 border-r border-gray-200 bg-gray-50 p-4">
+    <div class="w-56 border-r border-gray-200 bg-gray-50 p-4 overflow-y-auto">
       <h2 class="font-bold text-lg mb-4">📚 我的小说</h2>
-      <div
-        v-for="novel in store.novels"
-        :key="novel.id"
-        class="p-2 rounded cursor-pointer hover:bg-gray-100 flex items-center justify-between"
-        :class="{ 'bg-blue-100': store.currentNovel?.id === novel.id }"
-        @click="selectAndScroll(novel)"
-      >
-        <span class="flex-1 truncate">{{ novel.title }}</span>
-        <button @click.stop="confirmDelete(novel)" class="text-red-400 hover:text-red-600 ml-2">×</button>
+      <!-- 小说列表，带流程树 -->
+      <div v-for="novel in store.novels" :key="novel.id" class="mb-1">
+        <div
+          class="p-2 rounded cursor-pointer hover:bg-gray-100 flex items-center justify-between"
+          :class="{ 'bg-blue-100': store.currentNovel?.id === novel.id && !store.currentFlow }"
+          @click="toggleNovel(novel)"
+        >
+          <span class="flex-1 truncate">{{ novel.title }}</span>
+          <button @click.stop="confirmDelete(novel)" class="text-gray-400 hover:text-red-500 ml-2">×</button>
+        </div>
+        <!-- 流程树 -->
+        <div v-if="expandedNovel === novel.id && store.writingFlows.filter(f => f.enabled).length" class="ml-4 mt-1 space-y-1">
+          <div
+            v-for="flow in store.writingFlows.filter(f => f.enabled)"
+            :key="flow.id"
+            class="p-1.5 text-sm rounded cursor-pointer hover:bg-gray-200"
+            :class="{ 'bg-blue-100': store.currentFlow === flow.id }"
+            @click.stop="selectFlowForNovel(novel, flow.id)"
+          >
+            └ {{ flow.name }}
+          </div>
+        </div>
       </div>
       <button
         @click="createNewNovel"
@@ -31,13 +44,19 @@
     <div class="flex-1 flex flex-col">
       <div class="h-14 border-b border-gray-200 flex items-center px-4 justify-between">
         <span class="font-medium">{{ store.currentNovel?.title || '选择小说开始创作' }}</span>
-        <select v-model="selectedModel" @change="onModelChange" class="border rounded px-2 py-1">
-          <option v-for="model in store.getModelsForProvider(store.systemConfig.provider)" :key="model" :value="model">{{ model.toUpperCase() }}</option>
-          <option v-if="store.systemConfig.provider === 'custom'" value="">自定义</option>
-        </select>
+        <div class="flex items-center gap-2">
+          <button @click="toggleDark" class="p-1.5 rounded hover:bg-gray-100" title="切换深色模式">
+            <Sun v-if="!isDark" class="w-5 h-5" />
+            <Moon v-else class="w-5 h-5" />
+          </button>
+          <select v-model="selectedModel" @change="onModelChange" class="border rounded px-2 py-1">
+            <option v-for="model in store.getModelsForProvider(store.systemConfig.provider)" :key="model" :value="model">{{ model.toUpperCase() }}</option>
+            <option v-if="store.systemConfig.provider === 'custom'" value="">自定义</option>
+          </select>
+        </div>
       </div>
 
-      <div ref="messageContainer" class="flex-1 overflow-y-auto p-4">
+      <div class="flex-1 overflow-y-auto p-4" ref="messageContainer">
         <div
           v-for="msg in store.messages"
           :key="msg.id"
@@ -46,7 +65,7 @@
         >
           <div
             class="inline-block p-3 rounded-lg max-w-[80%]"
-            :class="msg.role === 'user' ? 'bg-blue-500 text-white' : 'bg-gray-200'"
+            :class="msg.role === 'user' ? 'bg-[var(--user-msg-bg)] text-white' : 'bg-[var(--ai-msg-bg)]'"
           >
             {{ msg.content }}
           </div>
@@ -75,13 +94,13 @@
     </div>
 
     <!-- Right: 写作辅助面板 -->
-    <div class="w-72 border-l border-gray-200 bg-gray-50 p-4">
-      <div class="flex gap-2 mb-4">
+    <div class="w-[500px] border-l border-gray-200 bg-gray-50 p-4">
+      <div class="flex gap-6 mb-4 border-b">
         <button
           v-for="tab in ['世界观', '角色', '大纲', '伏笔', 'AI配置']"
           :key="tab"
           @click="activeTab = tab"
-          class="px-2 py-1 text-sm"
+          class="px-4 py-2 text-base"
           :class="activeTab === tab ? 'border-b-2 border-blue-500' : ''"
         >
           {{ tab }}
@@ -94,7 +113,7 @@
 
     <!-- 配置弹窗 -->
     <div v-if="showConfig" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg w-[500px] max-h-[80vh] overflow-y-auto">
+      <div class="bg-[var(--bg-primary)] rounded-lg w-[500px] max-h-[80vh] overflow-y-auto">
         <div class="flex items-center justify-between p-4 border-b">
           <span class="font-bold">⚙️ 系统配置</span>
           <button @click="showConfig = false">✕</button>
@@ -113,6 +132,13 @@
             :class="configTab === 'prompt' ? 'border-b-2 border-blue-500' : ''"
           >
             提示词模板
+          </button>
+          <button
+            @click="configTab = 'flows'"
+            class="px-4 py-2"
+            :class="configTab === 'flows' ? 'border-b-2 border-blue-500' : ''"
+          >
+            创作流程
           </button>
         </div>
         <div class="p-4">
@@ -202,6 +228,33 @@
               ></textarea>
             </div>
           </div>
+          <div v-if="configTab === 'flows'">
+            <div v-for="(flow, idx) in store.writingFlows" :key="flow.id" class="mb-3 p-2 border rounded">
+              <div class="flex items-center gap-2 mb-1">
+                <input
+                  v-model="flow.name"
+                  class="border rounded px-2 py-1 flex-1"
+                  placeholder="名称"
+                />
+                <input
+                  type="checkbox"
+                  v-model="flow.enabled"
+                  :id="'flow-enabled-' + flow.id"
+                />
+                <label :for="'flow-enabled-' + flow.id" class="text-sm">启用</label>
+                <button @click="removeFlow(idx)" class="text-red-500">删除</button>
+              </div>
+              <textarea
+                v-model="flow.prompt"
+                class="w-full border rounded p-2"
+                rows="2"
+                placeholder="流程提示词前缀"
+              ></textarea>
+            </div>
+            <button @click="addFlow" class="w-full py-2 border-2 border-dashed border-gray-300 rounded text-gray-500 hover:border-blue-400">
+              + 新增流程
+            </button>
+          </div>
         </div>
         <div class="flex justify-end gap-2 p-4 border-t">
           <button @click="showConfig = false" class="px-4 py-2 border rounded">取消</button>
@@ -214,6 +267,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, nextTick, watch } from 'vue'
+import { Sun, Moon } from 'lucide-vue-next'
 import { useChatStore } from './stores/chat'
 import type { Novel } from './stores/chat'
 
@@ -222,6 +276,23 @@ const inputMessage = ref('')
 const selectedModel = ref('gpt-4')
 const activeTab = ref('世界观')
 const messageContainer = ref<HTMLElement | null>(null)
+const isDark = ref(false)
+
+const toggleDark = () => {
+  isDark.value = !isDark.value
+  document.documentElement.classList.toggle('dark', isDark.value)
+  localStorage.setItem('theme', isDark.value ? 'dark' : 'light')
+}
+
+const scrollToBottom = async () => {
+  await nextTick()
+  if (messageContainer.value) {
+    messageContainer.value.scrollTop = messageContainer.value.scrollHeight
+  }
+}
+
+// 监听 messages 变化，自动滚动到底部
+watch(() => store.messages.length, scrollToBottom)
 const promptButtons = ref([
   { name: '总结', content: '请总结以上内容要点：' },
   { name: '润色', content: '请润色以下内容：' },
@@ -229,31 +300,23 @@ const promptButtons = ref([
   { name: '扩写', content: '请扩写：' }
 ])
 
-watch(() => store.messages.length, () => {
-  nextTick(scrollToBottom)
-})
-
 onMounted(async () => {
+  // 读取保存的主题设置
+  const savedTheme = localStorage.getItem('theme')
+  if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+    isDark.value = true
+    document.documentElement.classList.add('dark')
+  }
   await store.fetchedNovels()
   await store.fetchSystemConfig()
+  await store.fetchWritingFlows()
   selectedModel.value = store.systemConfig.model
+  // 自动选择第一个小说并加载对话
   if (store.novels.length > 0) {
     await store.selectNovel(store.novels[0])
     scrollToBottom()
   }
 })
-
-const scrollToBottom = () => {
-  if (messageContainer.value) {
-    messageContainer.value.scrollTop = messageContainer.value.scrollHeight
-  }
-}
-
-const selectAndScroll = async (novel: Novel) => {
-  await store.selectNovel(novel)
-  await nextTick()
-  scrollToBottom()
-}
 
 const createNewNovel = async () => {
   const title = prompt('请输入小说标题:')
@@ -278,6 +341,24 @@ const confirmDelete = (novel: Novel) => {
   }
 }
 
+const expandedNovel = ref<number | null>(null)
+
+const toggleNovel = async (novel: Novel) => {
+  if (expandedNovel.value === novel.id) {
+    expandedNovel.value = null
+  } else {
+    expandedNovel.value = novel.id
+  }
+  // Don't call any APIs - just expand and show flow selection
+  // User must explicitly click a flow to enter
+}
+
+const selectFlowForNovel = async (novel: Novel, flowId: string) => {
+  // 直接切换 novel 和 flow，不需要调用 selectNovel（它会循环所有接口）
+  store.currentNovel = novel
+  await store.selectFlow(flowId)
+}
+
 const showConfig = ref(false)
 const configTab = ref('api')
 
@@ -290,9 +371,21 @@ const openConfig = async () => {
 
 const saveConfig = async () => {
   await store.saveSystemConfig()
-  // TODO: 启用 prompt templates 需要后端 prompts router
-  // await store.savePromptTemplates()
+  await store.saveWritingFlows()
   showConfig.value = false
+}
+
+const addFlow = () => {
+  store.writingFlows.push({
+    id: 'flow-' + Date.now(),
+    name: '',
+    prompt: '',
+    enabled: true
+  })
+}
+
+const removeFlow = (idx: number) => {
+  store.writingFlows.splice(idx, 1)
 }
 
 const onModelChange = () => {
