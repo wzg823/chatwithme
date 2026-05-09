@@ -1,3 +1,4 @@
+import json
 import httpx
 from app.adapters.base import ModelAdapter
 
@@ -55,9 +56,55 @@ class OpenAIAdapter(ModelAdapter):
         extra_params = self._build_extra_params(config)
         data.update(extra_params)
 
+        usage = None
+
         with httpx.Client(timeout=30.0) as client:
             with client.stream("POST", url, json=data, headers=headers) as response:
                 response.raise_for_status()
                 for chunk in response.iter_text():
                     if chunk.startswith("data: "):
                         yield chunk[6:]
+
+                # Try to get usage from response headers
+                # DeepSeek/OpenAI may provide usage in headers
+                x_usage = response.headers.get("x-usage")
+                if x_usage:
+                    try:
+                        usage = json.loads(x_usage)
+                    except:
+                        pass
+
+        # If not from headers, get usage via non-streaming request
+        if not usage:
+            usage = self._get_usage(messages, config)
+
+        if usage:
+            yield "data: " + json.dumps({"usage": usage}) + "\n\n"
+        yield "data: [DONE]\n\n"
+
+    def _get_usage(self, messages: list, config: dict) -> dict:
+        """Get token usage via non-streaming request"""
+        url = f"{self.base_url}/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+        data = {
+            "model": config.get("model", self.model),
+            "messages": messages,
+            "temperature": config.get("temperature", 0.7),
+            "max_tokens": config.get("max_tokens", 4096)
+        }
+        extra_params = self._build_extra_params(config)
+        data.update(extra_params)
+
+        try:
+            with httpx.Client(timeout=30.0) as client:
+                response = client.post(url, json=data, headers=headers)
+                response.raise_for_status()
+                result = response.json()
+                if "usage" in result:
+                    return result["usage"]
+        except Exception:
+            pass
+        return None
