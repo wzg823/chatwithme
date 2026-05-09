@@ -221,6 +221,35 @@
                 rows="2"
               ></textarea>
             </div>
+
+            <hr class="my-4" />
+
+            <h3 class="font-bold mb-2">创作流程</h3>
+            <div v-for="(flow, idx) in store.writingFlows" :key="flow.id" class="mb-3 p-2 border rounded">
+              <div class="flex items-center gap-2 mb-1">
+                <input
+                  v-model="flow.name"
+                  class="border rounded px-2 py-1 flex-1"
+                  placeholder="名称"
+                />
+                <input
+                  type="checkbox"
+                  v-model="flow.enabled"
+                  :id="'flow-enabled-' + flow.id"
+                />
+                <label :for="'flow-enabled-' + flow.id" class="text-sm">启用</label>
+                <button @click="removeFlow(idx)" class="text-red-500">删除</button>
+              </div>
+              <textarea
+                v-model="flow.prompt"
+                class="w-full border rounded p-2"
+                rows="2"
+                placeholder="流程提示词前缀"
+              ></textarea>
+            </div>
+            <button @click="addFlow" class="w-full py-2 border-2 border-dashed border-gray-300 rounded text-gray-500 hover:border-blue-400">
+              + 新增流程
+            </button>
           </div>
         </div>
         <div class="flex justify-end gap-2 p-4 border-t">
@@ -276,6 +305,7 @@ onMounted(async () => {
   }
   await store.fetchedNovels()
   await store.fetchSystemConfig()
+  await store.fetchWritingFlows()
   selectedModel.value = store.systemConfig.model
   // 自动选择第一个小说并加载对话
   if (store.novels.length > 0) {
@@ -319,9 +349,21 @@ const openConfig = async () => {
 
 const saveConfig = async () => {
   await store.saveSystemConfig()
-  // TODO: 启用 prompt templates 需要后端 prompts router
-  // await store.savePromptTemplates()
+  await store.saveWritingFlows()
   showConfig.value = false
+}
+
+const addFlow = () => {
+  store.writingFlows.push({
+    id: 'flow-' + Date.now(),
+    name: '',
+    prompt: '',
+    enabled: true
+  })
+}
+
+const removeFlow = (idx: number) => {
+  store.writingFlows.splice(idx, 1)
 }
 
 const onModelChange = () => {
