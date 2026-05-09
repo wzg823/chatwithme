@@ -71,6 +71,66 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
+  const deleteNovel = async (id: number) => {
+    await axios.delete('/api/novels/' + id)
+    novels.value = novels.value.filter(n => n.id !== id)
+    if (currentNovel.value?.id === id) {
+      currentNovel.value = null
+      messages.value = []
+    }
+  }
+
+  const systemConfig = ref({
+    apiKey: '',
+    defaultModel: 'gpt-4',
+    isDefault: false
+  })
+
+  const promptTemplates = ref([
+    { name: '总结', content: '请总结以上内容要点：' },
+    { name: '润色', content: '请润色以下内容：' },
+    { name: '续写', content: '请续写：' },
+    { name: '扩写', content: '请扩写：' }
+  ])
+
+  const fetchSystemConfig = async () => {
+    const res = await axios.get('/api/model-configs')
+    if (res.data.length > 0) {
+      const config = res.data[0]
+      systemConfig.value = {
+        apiKey: config.api_key || '',
+        defaultModel: config.model,
+        isDefault: false
+      }
+    }
+  }
+
+  const saveSystemConfig = async () => {
+    await axios.post('/api/model-configs', {
+      provider: 'openai',
+      model: systemConfig.value.defaultModel,
+      api_key: systemConfig.value.apiKey,
+      temperature: 0.7,
+      max_tokens: 4096
+    })
+  }
+
+  const fetchPromptTemplates = async () => {
+    const res = await axios.get('/api/prompt-buttons')
+    promptTemplates.value = res.data.map((b: any) => ({ name: b.name, content: b.content }))
+  }
+
+  const savePromptTemplates = async () => {
+    for (const t of promptTemplates.value) {
+      await axios.post('/api/prompt-buttons', {
+        name: t.name,
+        button_type: 'prompt',
+        content: t.content,
+        category: 'default'
+      })
+    }
+  }
+
   return {
     novels,
     currentNovel,
@@ -79,6 +139,13 @@ export const useChatStore = defineStore('chat', () => {
     fetchedNovels,
     createNovel,
     selectNovel,
-    sendMessage
+    sendMessage,
+    deleteNovel,
+    systemConfig,
+    promptTemplates,
+    fetchSystemConfig,
+    saveSystemConfig,
+    fetchPromptTemplates,
+    savePromptTemplates
   }
 })

@@ -6,17 +6,24 @@
       <div
         v-for="novel in store.novels"
         :key="novel.id"
-        class="p-2 rounded cursor-pointer hover:bg-gray-100"
+        class="p-2 rounded cursor-pointer hover:bg-gray-100 flex items-center justify-between"
         :class="{ 'bg-blue-100': store.currentNovel?.id === novel.id }"
         @click="store.selectNovel(novel)"
       >
-        {{ novel.title }}
+        <span class="flex-1 truncate">{{ novel.title }}</span>
+        <button @click.stop="confirmDelete(novel)" class="text-red-400 hover:text-red-600 ml-2">🗑️</button>
       </div>
       <button
         @click="createNewNovel"
         class="mt-4 w-full py-2 border-2 border-dashed border-gray-300 rounded text-gray-500 hover:border-blue-400 hover:text-blue-500"
       >
         + 新建
+      </button>
+      <button
+        @click="openConfig"
+        class="mt-2 w-full py-2 border rounded flex items-center justify-center gap-2 hover:bg-gray-100"
+      >
+        ⚙️ 配置
       </button>
     </div>
 
@@ -84,12 +91,73 @@
         {{ activeTab }} 内容展示区
       </div>
     </div>
+
+    <!-- 配置弹窗 -->
+    <div v-if="showConfig" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg w-[500px] max-h-[80vh] overflow-y-auto">
+        <div class="flex items-center justify-between p-4 border-b">
+          <span class="font-bold">⚙️ 系统配置</span>
+          <button @click="showConfig = false">✕</button>
+        </div>
+        <div class="flex border-b">
+          <button
+            @click="configTab = 'api'"
+            class="px-4 py-2"
+            :class="configTab === 'api' ? 'border-b-2 border-blue-500' : ''"
+          >
+            API配置
+          </button>
+          <button
+            @click="configTab = 'prompt'"
+            class="px-4 py-2"
+            :class="configTab === 'prompt' ? 'border-b-2 border-blue-500' : ''"
+          >
+            提示词模板
+          </button>
+        </div>
+        <div class="p-4">
+          <div v-if="configTab === 'api'">
+            <div class="mb-4">
+              <label class="block text-sm mb-1">API Key</label>
+              <input
+                v-model="store.systemConfig.apiKey"
+                type="password"
+                class="w-full border rounded p-2"
+              />
+            </div>
+            <div class="mb-4">
+              <label class="block text-sm mb-1">模型</label>
+              <select v-model="store.systemConfig.defaultModel" class="w-full border rounded p-2">
+                <option value="gpt-4">GPT-4</option>
+                <option value="gpt-4o">GPT-4o</option>
+                <option value="gpt-4o-mini">GPT-4o-mini</option>
+              </select>
+            </div>
+          </div>
+          <div v-if="configTab === 'prompt'">
+            <div v-for="(t, idx) in store.promptTemplates" :key="idx" class="mb-4">
+              <label class="block text-sm mb-1">{{ t.name }}</label>
+              <textarea
+                v-model="t.content"
+                class="w-full border rounded p-2"
+                rows="2"
+              ></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="flex justify-end gap-2 p-4 border-t">
+          <button @click="showConfig = false" class="px-4 py-2 border rounded">取消</button>
+          <button @click="saveConfig" class="px-4 py-2 bg-blue-500 text-white rounded">保存</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useChatStore } from './stores/chat'
+import type { Novel } from './stores/chat'
 
 const store = useChatStore()
 const inputMessage = ref('')
@@ -121,5 +189,26 @@ const sendMessage = async () => {
 
 const sendWithPrompt = async (btn: any) => {
   await store.sendMessage(btn.content)
+}
+
+const confirmDelete = (novel: Novel) => {
+  if (confirm(`确定删除小说《${novel.title}》吗？此操作不可撤销。`)) {
+    store.deleteNovel(novel.id)
+  }
+}
+
+const showConfig = ref(false)
+const configTab = ref('api')
+
+const openConfig = async () => {
+  showConfig.value = true
+  await store.fetchSystemConfig()
+  await store.fetchPromptTemplates()
+}
+
+const saveConfig = async () => {
+  await store.saveSystemConfig()
+  await store.savePromptTemplates()
+  showConfig.value = false
 }
 </script>
