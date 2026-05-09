@@ -98,16 +98,15 @@
       </div>
       <div v-if="activeTab === '流程'" class="space-y-2">
         <div
-          v-for="flow in store.writingFlows"
+          v-for="flow in store.writingFlows.filter(f => f.enabled)"
           :key="flow.id"
           class="p-2 border rounded cursor-pointer hover:bg-gray-100 flex items-center justify-between"
           :class="{ 'bg-blue-100': store.currentFlow === flow.id }"
           @click="store.selectFlow(flow.id)"
         >
           <span>{{ flow.name }}</span>
-          <span v-if="!flow.enabled" class="text-xs text-gray-400">已禁用</span>
         </div>
-        <div v-if="!store.writingFlows.length" class="text-gray-400 text-sm">
+        <div v-if="!store.writingFlows.filter(f => f.enabled).length" class="text-gray-400 text-sm">
           暂无创作流程，请在配置中添加
         </div>
       </div>
