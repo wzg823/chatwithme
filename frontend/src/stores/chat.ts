@@ -16,10 +16,11 @@ export interface Novel {
 }
 
 export interface WritingFlow {
-  id: string
+  id: string | number
   name: string
   prompt: string
   enabled: boolean
+  created_at?: string
 }
 
 export const useChatStore = defineStore('chat', () => {
@@ -35,6 +36,25 @@ export const useChatStore = defineStore('chat', () => {
     { id: 'body', name: '正文', prompt: '请续写以下内容：', enabled: true }
   ])
   const currentFlow = ref<string | null>(null)
+
+  // 每本小说的独立流程配置
+  const novelFlows = ref<WritingFlow[]>([])
+
+  const fetchNovelFlows = async (novelId: number) => {
+    const res = await axios.get(`/api/novels/${novelId}/flows`)
+    novelFlows.value = res.data
+  }
+
+  const addNovelFlow = async (novelId: number, flow: { name: string; prompt?: string; from_template?: string }) => {
+    const res = await axios.post(`/api/novels/${novelId}/flows`, flow)
+    novelFlows.value.push(res.data)
+    return res.data
+  }
+
+  const removeNovelFlow = async (novelId: number, flowId: number) => {
+    await axios.delete(`/api/novels/${novelId}/flows/${flowId}`)
+    novelFlows.value = novelFlows.value.filter(f => f.id !== flowId)
+  }
 
   const fetchedNovels = async () => {
     const res = await axios.get('/api/novels')
@@ -388,6 +408,10 @@ export const useChatStore = defineStore('chat', () => {
     saveWritingFlows,
     selectFlow,
     selectDefaultChat,
-    showFlowSelect
+    showFlowSelect,
+    novelFlows,
+    fetchNovelFlows,
+    addNovelFlow,
+    removeNovelFlow
   }
 })
