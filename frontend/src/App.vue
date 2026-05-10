@@ -1,29 +1,18 @@
 <template>
-  <div class="h-screen flex">
-    <!-- Left: 小说列表 -->
-    <div class="w-56 border-r border-gray-200 bg-gray-50 p-4 overflow-y-auto">
+  <div>
+    <div class="h-screen flex">
+      <!-- Left: 小说列表 -->
+      <div class="w-56 border-r border-gray-200 bg-gray-50 p-4 overflow-y-auto">
       <h2 class="font-bold text-lg mb-4">📚 我的小说</h2>
       <!-- 小说列表，带流程树 -->
       <div v-for="novel in store.novels" :key="novel.id" class="mb-1">
         <div
           class="p-2 rounded cursor-pointer hover:bg-gray-100 flex items-center justify-between"
-          :class="{ 'bg-blue-100': store.currentNovel?.id === novel.id && !store.currentFlow }"
-          @click="toggleNovel(novel)"
+          :class="{ 'bg-blue-100': store.currentNovel?.id === novel.id }"
+          @click="viewNovelDetail(novel)"
         >
           <span class="flex-1 truncate">{{ novel.title }}</span>
           <button @click.stop="confirmDelete(novel)" class="text-gray-400 hover:text-red-500 ml-2">×</button>
-        </div>
-        <!-- 流程树 -->
-        <div v-if="expandedNovel === novel.id && store.writingFlows.filter(f => f.enabled).length" class="ml-4 mt-1 space-y-1">
-          <div
-            v-for="flow in store.writingFlows.filter(f => f.enabled)"
-            :key="flow.id"
-            class="p-1.5 text-sm rounded cursor-pointer hover:bg-gray-200"
-            :class="{ 'bg-blue-100': store.currentFlow === flow.id }"
-            @click.stop="selectFlowForNovel(novel, flow.id)"
-          >
-            └ {{ flow.name }}
-          </div>
         </div>
       </div>
       <button
@@ -49,7 +38,6 @@
             <Sun v-if="!isDark" class="w-5 h-5" />
             <Moon v-else class="w-5 h-5" />
           </button>
-          <button v-if="store.currentNovel && !showNovelDetail" @click="viewNovelDetail" class="px-3 py-1 border rounded hover:bg-gray-100">画册</button>
           <select v-model="selectedModel" @change="onModelChange" class="border rounded px-2 py-1">
             <option v-for="model in store.getModelsForProvider(store.systemConfig.provider)" :key="model" :value="model">{{ model.toUpperCase() }}</option>
             <option v-if="store.systemConfig.provider === 'custom'" value="">自定义</option>
@@ -59,19 +47,22 @@
 
       <!-- 详情页：画框网格 -->
       <div v-if="showNovelDetail" class="flex-1 p-6 overflow-y-auto">
-        <div class="mb-6">
-          <h2 class="text-xl font-semibold mb-1">📚 《{{ store.currentNovel?.title }}》</h2>
-          <p class="text-sm text-gray-500">创建于 {{ store.currentNovel?.created_at?.split('T')[0] }}</p>
+        <div class="mb-6 flex items-center justify-between">
+          <div>
+            <h2 class="text-xl font-semibold mb-1">📚 《{{ store.currentNovel?.title }}》</h2>
+            <p class="text-sm text-gray-500">创建于 {{ store.currentNovel?.created_at?.split('T')[0] }}</p>
+          </div>
+          <button @click="backToList" class="px-3 py-1 border rounded hover:bg-gray-100">← 返回</button>
         </div>
         <div class="grid grid-cols-3 gap-4">
           <div v-for="flow in store.novelFlows.filter(f => f.enabled)" :key="flow.id"
-            class="node-card p-6 rounded-lg cursor-pointer hover:shadow-lg transition-all relative"
+            class="node-card h-32 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 hover:shadow-lg transition-all relative overflow-visible"
             @mouseenter="hoveringFlow = flow.id" @mouseleave="hoveringFlow = null" @click="enterNodeChat(flow.id)">
-            <div class="text-xl font-bold text-center">{{ flow.name }}</div>
+            <div class="text-xl font-bold text-center flex items-center justify-center h-full">{{ flow.name }}</div>
             <button v-if="hoveringFlow === flow.id" @click.stop="confirmDeleteFlow(flow.id)"
-              class="absolute top-2 right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-sm hover:bg-red-600">×</button>
+              class="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-sm hover:bg-red-600">-</button>
           </div>
-          <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 flex items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-all"
+          <div class="border-2 border-dashed border-gray-300 rounded-lg h-32 flex items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-all"
             @click="showAddFlowModal = true">
             <span class="text-2xl text-gray-400">+</span>
           </div>
@@ -293,6 +284,39 @@
       </div>
     </div>
   </div>
+
+  <!-- 添加流程弹窗 -->
+  <div v-if="showAddFlowModal && store.currentNovel" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 w-96 dark:bg-gray-800 dark:text-white">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="font-bold text-lg">添加创作流程</h3>
+        <button @click="showAddFlowModal = false" class="text-gray-400 hover:text-gray-600">×</button>
+      </div>
+      <div class="mb-4">
+        <p class="text-sm font-medium mb-2">从预设选择</p>
+        <div class="space-y-2">
+          <div v-for="template in store.writingFlows" :key="template.id"
+            class="p-3 border rounded cursor-pointer hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-gray-700"
+            @click="addFromTemplate(template.id)">
+            <div class="font-medium">{{ template.name }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="flex items-center my-4">
+        <div class="flex-1 border-t"></div>
+        <span class="px-3 text-sm text-gray-400">或新建自定义</span>
+        <div class="flex-1 border-t"></div>
+      </div>
+      <div>
+        <p class="text-sm font-medium mb-2">自定义流程</p>
+        <input v-model="newFlowName" class="w-full border rounded p-2 mb-2 dark:bg-gray-700 dark:border-gray-600" placeholder="流程名称" />
+        <textarea v-model="newFlowPrompt" class="w-full border rounded p-2 mb-3 dark:bg-gray-700 dark:border-gray-600" placeholder="提示词前缀（可选）" rows="3" />
+        <button @click="addCustomFlow" :disabled="!newFlowName.trim()"
+          class="w-full py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300">添加</button>
+      </div>
+    </div>
+  </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -377,7 +401,10 @@ const showAddFlowModal = ref(false)
 const newFlowName = ref('')
 const newFlowPrompt = ref('')
 
-const viewNovelDetail = async () => {
+const viewNovelDetail = async (novel?: Novel) => {
+  if (novel) {
+    store.currentNovel = novel
+  }
   if (store.currentNovel) {
     showNovelDetail.value = true
     await store.fetchNovelFlows(store.currentNovel.id)
@@ -424,24 +451,6 @@ const addCustomFlow = async () => {
   }
 }
 
-const expandedNovel = ref<number | null>(null)
-
-const toggleNovel = async (novel: Novel) => {
-  if (expandedNovel.value === novel.id) {
-    expandedNovel.value = null
-  } else {
-    expandedNovel.value = novel.id
-  }
-  // Don't call any APIs - just expand and show flow selection
-  // User must explicitly click a flow to enter
-}
-
-const selectFlowForNovel = async (novel: Novel, flowId: string) => {
-  // 直接切换 novel 和 flow，不需要调用 selectNovel（它会循环所有接口）
-  store.currentNovel = novel
-  await store.selectFlow(flowId)
-}
-
 const showConfig = ref(false)
 const configTab = ref('api')
 
@@ -485,35 +494,3 @@ const copyMessage = async (content: string) => {
   }
 }
 </script>
-
-<!-- 添加流程弹窗 -->
-<div v-if="showAddFlowModal && store.currentNovel" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-  <div class="bg-white rounded-lg p-6 w-96 dark:bg-gray-800 dark:text-white">
-    <div class="flex justify-between items-center mb-4">
-      <h3 class="font-bold text-lg">添加创作流程</h3>
-      <button @click="showAddFlowModal = false" class="text-gray-400 hover:text-gray-600">×</button>
-    </div>
-    <div class="mb-4">
-      <p class="text-sm font-medium mb-2">从预设选择</p>
-      <div class="space-y-2">
-        <div v-for="template in store.writingFlows" :key="template.id"
-          class="p-3 border rounded cursor-pointer hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-gray-700"
-          @click="addFromTemplate(template.id)">
-          <div class="font-medium">{{ template.name }}</div>
-        </div>
-      </div>
-    </div>
-    <div class="flex items-center my-4">
-      <div class="flex-1 border-t"></div>
-      <span class="px-3 text-sm text-gray-400">或新建自定义</span>
-      <div class="flex-1 border-t"></div>
-    </div>
-    <div>
-      <p class="text-sm font-medium mb-2">自定义流程</p>
-      <input v-model="newFlowName" class="w-full border rounded p-2 mb-2 dark:bg-gray-700 dark:border-gray-600" placeholder="流程名称" />
-      <textarea v-model="newFlowPrompt" class="w-full border rounded p-2 mb-3 dark:bg-gray-700 dark:border-gray-600" placeholder="提示词前缀（可选）" rows="3" />
-      <button @click="addCustomFlow" :disabled="!newFlowName.trim()"
-        class="w-full py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300">添加</button>
-    </div>
-  </div>
-</div>
