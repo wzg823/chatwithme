@@ -15,6 +15,7 @@ class Novel(Base):
     outlines = relationship("Outline", back_populates="novel")
     chapters = relationship("Chapter", back_populates="novel")
     plot_threads = relationship("PlotThread", back_populates="novel")
+    flows = relationship("NovelFlows", back_populates="novel")
 
 class Message(Base):
     __tablename__ = "messages"
@@ -111,3 +112,14 @@ class UserModelPreference(Base):
     user_id = Column(Integer, nullable=True)
     model_config_id = Column(Integer, ForeignKey("model_configs.id"))
     is_default = Column(Boolean, default=False)
+
+class NovelFlows(Base):
+    __tablename__ = "novel_flows"
+    id = Column(Integer, primary_key=True, index=True)
+    novel_id = Column(Integer, ForeignKey("novels.id"))
+    name = Column(String, nullable=False)
+    prompt = Column(Text, nullable=True)
+    enabled = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    novel = relationship("Novel", back_populates="flows")

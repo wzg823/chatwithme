@@ -22,7 +22,7 @@ def get_db():
         db.close()
 
 # Import all models to register them with Base
-from app.models.models import Novel, Message, WorldSetting, Outline, Chapter, PlotThread, PromptCategory, PromptButton, ModelConfig
+from app.models.models import Novel, Message, WorldSetting, Outline, Chapter, PlotThread, PromptCategory, PromptButton, ModelConfig, NovelFlows
 
 def create_tables():
     Base.metadata.create_all(bind=engine)
