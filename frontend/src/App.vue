@@ -60,8 +60,8 @@
         <div
           v-for="msg in store.messages"
           :key="msg.id"
-          class="mb-4"
-          :class="msg.role === 'user' ? 'text-right' : 'text-left'"
+          class="mb-4 flex"
+          :class="msg.role === 'user' ? 'justify-end' : 'justify-start'"
         >
           <div
             class="inline-block p-3 rounded-lg max-w-[80%]"
@@ -69,6 +69,14 @@
           >
             {{ msg.content }}
           </div>
+          <button
+            v-if="msg.role === 'assistant'"
+            @click="copyMessage(msg.content)"
+            class="self-end ml-2 mb-1 text-xs text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-200"
+            title="复制内容"
+          >
+            <Copy class="w-3 h-3" />
+          </button>
         </div>
       </div>
 
@@ -267,7 +275,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, nextTick, watch } from 'vue'
-import { Sun, Moon } from 'lucide-vue-next'
+import { Sun, Moon, Copy } from 'lucide-vue-next'
 import { useChatStore } from './stores/chat'
 import type { Novel } from './stores/chat'
 
@@ -391,5 +399,14 @@ const removeFlow = (idx: number) => {
 const onModelChange = () => {
   store.systemConfig.model = selectedModel.value
   store.saveSystemConfig()
+}
+
+const copyMessage = async (content: string) => {
+  try {
+    await navigator.clipboard.writeText(content)
+    alert('已复制到剪贴板')
+  } catch (err) {
+    console.error('复制失败:', err)
+  }
 }
 </script>
