@@ -138,29 +138,34 @@
       <div class="space-y-4">
         <div v-for="sub in currentSubCategories" :key="sub">
           <!-- 分类标题 -->
-          <div class="flex justify-between items-center py-1 border-b">
+          <div
+            class="flex justify-between items-center py-2 border-b cursor-pointer hover:bg-gray-100"
+            @click="toggleSubCategory(sub)"
+          >
             <span class="font-medium text-sm">{{ sub }}</span>
-            <button @click="deleteSubCategory(sub)" class="text-gray-400 hover:text-red-500">
+            <button @click.stop="deleteSubCategory(sub)" class="text-gray-400 hover:text-red-500">
               <Trash2 class="w-4 h-4" />
             </button>
           </div>
 
           <!-- 该分类下的设定 -->
-          <div class="space-y-2 ml-2 mt-2">
+          <div v-if="expandedSubCategory === sub" class="space-y-2 ml-2 mt-2">
             <div
               v-for="setting in (store.novelSettings[settingTab]?.[sub] || [])"
               :key="setting.id"
-              class="p-2 bg-white border rounded"
+              class="p-2 bg-white border rounded cursor-pointer hover:border-blue-400"
+              @click="toggleEditSetting(setting)"
             >
               <div class="flex justify-between items-center">
                 <span
-                  class="font-medium text-sm cursor-pointer"
+                  class="font-medium text-sm"
                   :class="editingSettingId === setting.id ? 'text-blue-600' : ''"
-                  @click="toggleEditSetting(setting)"
                 >
                   {{ setting.title }}
                 </span>
-                <button @click.stop="confirmDeleteSetting(setting.id)" class="text-gray-400 hover:text-red-500 text-xs">×</button>
+                <button @click.stop="confirmDeleteSetting(setting.id)" class="text-gray-400 hover:text-red-500">
+                  <X class="w-4 h-4" />
+                </button>
               </div>
               <!-- 编辑区 -->
               <div v-if="editingSettingId === setting.id" class="mt-2 space-y-2">
@@ -420,7 +425,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, nextTick, watch, computed } from 'vue'
-import { Copy, Trash2 } from 'lucide-vue-next'
+import { Copy, Trash2, X } from 'lucide-vue-next'
 import { useChatStore } from './stores/chat'
 import type { Novel, NovelSetting } from './stores/chat'
 
@@ -469,6 +474,11 @@ onMounted(async () => {
     await store.selectNovel(store.novels[0])
     await store.fetchNovelFlows(store.novels[0].id)
     await store.fetchNovelSettings(store.novels[0].id, settingTab.value)
+    // 自动展开第一个分类
+    const firstSub = currentSubCategories.value[0]
+    if (firstSub) {
+      expandedSubCategory.value = firstSub
+    }
     showNovelDetail.value = true
   }
 })
@@ -587,8 +597,13 @@ const editingSettingId = ref<number | null>(null)
 const editingTitle = ref('')
 const editingContent = ref('')
 const showAddSetting = ref(false)
+const expandedSubCategory = ref('')
 const newSettingTitle = ref('')
 const newSettingContent = ref('')
+
+const toggleSubCategory = (sub: string) => {
+  expandedSubCategory.value = expandedSubCategory.value === sub ? '' : sub
+}
 
 const currentSubCategories = computed(() => {
   const cat = store.novelSettings[settingTab.value]
@@ -605,6 +620,7 @@ const switchSettingTab = async (tab: string) => {
   settingTab.value = tab
   settingSubCategory.value = ''
   editingSettingId.value = null
+  expandedSubCategory.value = ''
   if (store.currentNovel) {
     await store.fetchNovelSettings(store.currentNovel.id, tab)
   }
