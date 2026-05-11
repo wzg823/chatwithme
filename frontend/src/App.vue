@@ -160,7 +160,7 @@
               :key="setting.id"
               class="p-2 bg-white border rounded"
             >
-              <!-- 收起状态：只显示标题和展开按钮 -->
+              <!-- 收起状态：只显示标题 -->
               <div v-if="editingSettingId !== setting.id" class="flex justify-between items-center">
                 <span
                   class="font-medium text-sm cursor-pointer flex-1"
@@ -169,7 +169,7 @@
                   {{ setting.title }}
                 </span>
                 <button @click.stop="toggleEditSetting(setting)" class="text-gray-400 hover:text-blue-500">
-                  <Edit2 class="w-4 h-4" />
+                  <ChevronDown class="w-4 h-4" />
                 </button>
               </div>
 
@@ -432,7 +432,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, nextTick, watch, computed } from 'vue'
-import { Copy, Trash2, Edit2 } from 'lucide-vue-next'
+import { Copy, Trash2, ChevronDown, Edit2 } from 'lucide-vue-next'
 import { useChatStore } from './stores/chat'
 import type { Novel, NovelSetting } from './stores/chat'
 
