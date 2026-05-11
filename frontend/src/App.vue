@@ -10,8 +10,8 @@
         </div>
       </div>
       <button @click="createNewNovel" class="mt-4 w-full py-2 border-2 border-dashed border-gray-300 rounded text-gray-500 hover:border-blue-400 hover:text-blue-500">+ 新建</button>
-      <button @click="openConfig" class="mt-2 w-full py-2 border rounded flex items-center justify-center gap-2 hover:bg-gray-100">⚙️ 配置</button>
-      <button @click="openExport" class="mt-2 w-full py-2 border rounded flex items-center justify-center gap-2 hover:bg-gray-100">📤 导出</button>
+      <button @click="openConfig" class="mt-2 w-full py-2 border rounded flex items-center justify-center gap-2 hover:bg-gray-100"><Settings class="w-4 h-4" />配置</button>
+      <button @click="openExport" class="mt-2 w-full py-2 border rounded flex items-center justify-center gap-2 hover:bg-gray-100"><Download class="w-4 h-4" />导出</button>
     </div>
 
     <!-- Middle: 对话区 -->
@@ -42,6 +42,9 @@
         <div class="grid grid-cols-3 gap-4">
           <div v-for="flow in store.novelFlows.filter(f => f.enabled)" :key="flow.id" class="h-32 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 hover:shadow-lg transition-all relative" @click="enterNodeChat(flow.id)">
             <div class="text-xl font-bold text-center flex items-center justify-center h-full">{{ flow.name }}</div>
+            <button @click.stop="confirmDeleteFlow(flow.id)" class="absolute top-1 right-1 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-red-500 bg-white/80 rounded" title="删除">
+              <Trash2 class="w-4 h-4" />
+            </button>
           </div>
           <div class="border-2 border-dashed border-gray-300 rounded-lg h-32 flex items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50" @click="showAddFlowModal = true">
             <span class="text-2xl text-gray-400">+</span>
@@ -51,7 +54,12 @@
 
       <div v-else class="flex-1 overflow-y-auto p-4" ref="messageContainer">
         <div v-for="msg in store.messages" :key="msg.id" class="mb-4 flex" :class="msg.role === 'user' ? 'justify-end' : 'justify-start'">
-          <div class="inline-block p-3 rounded-lg max-w-[80%]" :class="msg.role === 'user' ? 'bg-blue-500 text-white' : 'bg-gray-100'">{{ msg.content }}</div>
+          <div class="inline-block p-3 rounded-lg max-w-[80%] relative group" :class="msg.role === 'user' ? 'bg-blue-500 text-white' : 'bg-gray-100'">
+            <div class="whitespace-pre-wrap">{{ msg.content }}</div>
+            <button v-if="msg.role === 'assistant'" @click="copyMessage(msg.content)" class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 px-2 py-1 text-xs bg-white border rounded shadow hover:bg-gray-50" title="复制">
+              📋
+            </button>
+          </div>
         </div>
       </div>
 
@@ -118,24 +126,58 @@
     </div>
 
     <div v-if="showConfig" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg w-[500px] max-h-[80vh] overflow-y-auto p-4">
+      <div class="bg-white rounded-lg w-[500px] max-h-[80vh] overflow-y-auto">
         <div class="flex items-center justify-between p-4 border-b">
-          <span class="font-bold">⚙️ 系统配置</span>
+          <span class="font-bold flex items-center gap-2"><Settings class="w-4 h-4" />系统配置</span>
           <button @click="showConfig = false">✕</button>
         </div>
+        <div class="flex border-b">
+          <button @click="configTab = 'api'" class="px-4 py-2" :class="configTab === 'api' ? 'border-b-2 border-blue-500' : ''">API配置</button>
+          <button @click="configTab = 'prompt'" class="px-4 py-2" :class="configTab === 'prompt' ? 'border-b-2 border-blue-500' : ''">提示词模板</button>
+        </div>
         <div class="p-4">
-          <div class="mb-4">
-            <label class="block text-sm mb-1">Provider</label>
-            <select v-model="store.systemConfig.provider" class="w-full border rounded p-2">
-              <option value="openai">OpenAI</option>
-              <option value="deepseek">DeepSeek</option>
-            </select>
+          <div v-if="configTab === 'api'">
+            <div class="mb-4">
+              <label class="block text-sm mb-1">Provider</label>
+              <select v-model="store.systemConfig.provider" class="w-full border rounded p-2">
+                <option value="openai">OpenAI</option>
+                <option value="deepseek">DeepSeek</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+            <div class="mb-4">
+              <label class="block text-sm mb-1">API Key</label>
+              <input v-model="store.systemConfig.apiKey" type="password" class="w-full border rounded p-2" />
+            </div>
+            <div class="mb-4">
+              <label class="block text-sm mb-1">模型</label>
+              <select v-model="store.systemConfig.model" class="w-full border rounded p-2" :disabled="store.systemConfig.provider === 'custom'">
+                <option v-for="model in store.getModelsForProvider(store.systemConfig.provider)" :key="model" :value="model">{{ model.toUpperCase() }}</option>
+                <option v-if="store.systemConfig.provider === 'custom'" value="">自定义模型</option>
+              </select>
+            </div>
+            <div v-if="store.systemConfig.provider === 'custom'" class="mb-4">
+              <label class="block text-sm mb-1">Base URL</label>
+              <input v-model="store.systemConfig.baseUrl" type="text" placeholder="https://api.example.com/v1" class="w-full border rounded p-2" />
+            </div>
+            <div v-if="store.systemConfig.provider === 'custom' && !store.getModelsForProvider(store.systemConfig.provider).includes(store.systemConfig.model)" class="mb-4">
+              <label class="block text-sm mb-1">模型名称</label>
+              <input v-model="store.systemConfig.model" type="text" placeholder="e.g. claude-3-opus" class="w-full border rounded p-2" />
+            </div>
           </div>
-          <div class="mb-4">
-            <label class="block text-sm mb-1">API Key</label>
-            <input v-model="store.systemConfig.apiKey" type="password" class="w-full border rounded p-2" />
+          <div v-if="configTab === 'prompt'">
+            <div class="space-y-2">
+              <div v-for="template in store.promptTemplates" :key="template.name" class="p-2 border rounded">
+                <div class="font-medium">{{ template.name }}</div>
+                <div class="text-sm text-gray-500">{{ template.description }}</div>
+              </div>
+              <div v-if="store.promptTemplates.length === 0" class="text-gray-400 text-center py-4">暂无可用模板</div>
+            </div>
           </div>
-          <button @click="store.saveSystemConfig()" class="px-4 py-2 bg-blue-500 text-white rounded">保存配置</button>
+        </div>
+        <div class="flex justify-end gap-2 p-4 border-t">
+          <button @click="showConfig = false" class="px-4 py-2 border rounded">取消</button>
+          <button @click="saveConfig" class="px-4 py-2 bg-blue-500 text-white rounded">保存</button>
         </div>
       </div>
     </div>
@@ -171,10 +213,27 @@
         </div>
       </div>
     </div>
+
+    <div v-if="showPromptEdit" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg p-6 w-[500px]">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="font-bold text-lg">编辑提示词</h3>
+          <button @click="showPromptEdit = false" class="text-gray-400 hover:text-gray-600">×</button>
+        </div>
+        <div>
+          <label class="block text-sm mb-1">提示词前缀</label>
+          <textarea v-model="currentFlowPrompt" class="w-full border rounded p-2 mb-3" rows="6" placeholder="输入此流程的提示词前缀..."></textarea>
+          <div class="flex justify-end gap-2">
+            <button @click="showPromptEdit = false" class="px-4 py-2 border rounded">取消</button>
+            <button @click="savePrompt" class="px-4 py-2 bg-blue-500 text-white rounded">保存</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template><script setup lang="ts">
 import { ref, onMounted, nextTick, watch, computed } from 'vue'
-import { Copy, Trash2, ChevronDown, ChevronUp, Edit2 } from 'lucide-vue-next'
+import { Copy, Trash2, ChevronDown, ChevronUp, Edit2, Settings, Download } from 'lucide-vue-next'
 import ExportModal from './components/ExportModal.vue'
 import { useChatStore } from './stores/chat'
 import type { Novel, NovelSetting } from './stores/chat'
@@ -251,7 +310,7 @@ const confirmDelete = (novel: Novel) => {
   }
 }
 
-const showNovelDetail = ref(false)
+const showNovelDetail = ref(true)  // 默认显示节点选择页面，避免闪屏
 const hoveringFlow = ref<string | number | null>(null)
 const showAddFlowModal = ref(false)
 const newFlowName = ref('')
