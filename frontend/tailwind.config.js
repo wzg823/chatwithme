@@ -5,7 +5,12 @@ export default {
   ],
   darkMode: 'class',
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        archivo: ['Archivo', 'sans-serif'],
+        space: ['Space Grotesk', 'sans-serif'],
+      },
+    },
   },
   plugins: [],
 }
