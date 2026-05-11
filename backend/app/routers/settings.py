@@ -2,10 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.models.database import get_db
 from app.models.models import NovelSetting
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
-import json
 
 router = APIRouter()
 
@@ -26,11 +25,11 @@ class NovelSettingCreate(BaseModel):
     category: str
     sub_category: str
     title: str
-    content: dict = Field(default_factory=dict)
+    content: str = ""
 
 class NovelSettingUpdate(BaseModel):
     title: Optional[str] = None
-    content: Optional[dict] = Field(default_factory=lambda: {})
+    content: Optional[str] = ""
 
 @router.get("/novels/{novel_id}/settings", response_model=dict)
 def get_novel_settings(novel_id: int, category: str = None, db: Session = Depends(get_db)):
@@ -56,7 +55,7 @@ def get_novel_settings(novel_id: int, category: str = None, db: Session = Depend
             "category": s.category,
             "sub_category": s.sub_category,
             "title": s.title,
-            "content": json.loads(s.content) if s.content else {},
+            "content": s.content or "",
             "created_at": s.created_at,
             "updated_at": s.updated_at
         })
@@ -66,29 +65,17 @@ def get_novel_settings(novel_id: int, category: str = None, db: Session = Depend
 @router.post("/novels/{novel_id}/settings", response_model=NovelSettingSchema)
 def create_novel_setting(novel_id: int, setting: NovelSettingCreate, db: Session = Depends(get_db)):
     """创建新设定"""
-    content_json = json.dumps(setting.content) if setting.content else "{}"
     db_setting = NovelSetting(
         novel_id=novel_id,
         category=setting.category,
         sub_category=setting.sub_category,
         title=setting.title,
-        content=content_json
+        content=setting.content or ""
     )
     db.add(db_setting)
     db.commit()
     db.refresh(db_setting)
-    # 转换 content 为字符串返回
-    result = {
-        "id": db_setting.id,
-        "novel_id": db_setting.novel_id,
-        "category": db_setting.category,
-        "sub_category": db_setting.sub_category,
-        "title": db_setting.title,
-        "content": db_setting.content,
-        "created_at": db_setting.created_at,
-        "updated_at": db_setting.updated_at
-    }
-    return result
+    return db_setting
 
 @router.put("/novels/{novel_id}/settings/{setting_id}", response_model=NovelSettingSchema)
 def update_novel_setting(novel_id: int, setting_id: int, setting: NovelSettingUpdate, db: Session = Depends(get_db)):
@@ -100,20 +87,11 @@ def update_novel_setting(novel_id: int, setting_id: int, setting: NovelSettingUp
     if setting.title is not None:
         db_setting.title = setting.title
     if setting.content is not None:
-        db_setting.content = json.dumps(setting.content)
+        db_setting.content = setting.content
 
     db.commit()
     db.refresh(db_setting)
-    return {
-        "id": db_setting.id,
-        "novel_id": db_setting.novel_id,
-        "category": db_setting.category,
-        "sub_category": db_setting.sub_category,
-        "title": db_setting.title,
-        "content": db_setting.content,
-        "created_at": db_setting.created_at,
-        "updated_at": db_setting.updated_at
-    }
+    return db_setting
 
 @router.delete("/novels/{novel_id}/settings/{setting_id}")
 def delete_novel_setting(novel_id: int, setting_id: int, db: Session = Depends(get_db)):

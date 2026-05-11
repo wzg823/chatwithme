@@ -135,19 +135,20 @@
       </div>
 
       <!-- 子分类按钮 -->
-      <div class="mb-3 flex gap-2 flex-wrap">
+      <div class="mb-3 space-y-1">
         <button
           v-for="sub in currentSubCategories"
           :key="sub"
           @click="settingSubCategory = sub"
-          class="px-2 py-1 text-xs border rounded"
+          class="w-full px-2 py-1 text-xs border rounded flex justify-between items-center"
           :class="settingSubCategory === sub ? 'bg-blue-100 border-blue-500' : 'bg-white'"
         >
-          {{ sub }}
+          <span>{{ sub }}</span>
+          <button @click.stop="deleteSubCategory(sub)" class="text-gray-400 hover:text-red-500 ml-2">×</button>
         </button>
         <button
           @click="addNewSubCategory"
-          class="px-2 py-1 text-xs border border-dashed rounded hover:border-blue-400"
+          class="w-full px-2 py-1 text-xs border border-dashed rounded hover:border-blue-400"
         >
           + 新增分类
         </button>
@@ -168,7 +169,7 @@
             >
               {{ setting.title }}
             </span>
-            <button @click="confirmDeleteSetting(setting.id)" class="text-gray-400 hover:text-red-500 text-xs">×</button>
+            <button @click.stop="confirmDeleteSetting(setting.id)" class="text-gray-400 hover:text-red-500 text-xs">×</button>
           </div>
           <!-- 编辑区 -->
           <div v-if="editingSettingId === setting.id" class="mt-2 space-y-2">
@@ -179,9 +180,9 @@
             />
             <textarea
               v-model="editingContent"
-              class="w-full border rounded px-2 py-1 text-sm font-mono"
+              class="w-full border rounded px-2 py-1 text-sm"
               rows="6"
-              placeholder="JSON 内容"
+              placeholder="内容"
             ></textarea>
             <div class="flex gap-2">
               <button @click="saveSetting" class="px-2 py-1 text-xs bg-blue-500 text-white rounded">保存</button>
@@ -630,22 +631,19 @@ const toggleEditSetting = (setting: NovelSetting) => {
   } else {
     editingSettingId.value = setting.id
     editingTitle.value = setting.title
-    editingContent.value = JSON.stringify(setting.content || {}, null, 2)
+    // content 已经是字符串，直接使用
+    editingContent.value = typeof setting.content === 'string' ? setting.content : JSON.stringify(setting.content || '')
   }
 }
 
 const saveSetting = async () => {
   if (!store.currentNovel || !editingSettingId.value) return
-  try {
-    const content = JSON.parse(editingContent.value || '{}')
-    await store.updateNovelSetting(store.currentNovel.id, editingSettingId.value, {
-      title: editingTitle.value,
-      content
-    }, settingTab.value)
-    editingSettingId.value = null
-  } catch (e) {
-    alert('JSON 格式错误')
-  }
+  // content 直接作为字符串存储
+  await store.updateNovelSetting(store.currentNovel.id, editingSettingId.value, {
+    title: editingTitle.value,
+    content: editingContent.value
+  }, settingTab.value)
+  editingSettingId.value = null
 }
 
 const confirmDeleteSetting = async (id: number) => {
@@ -657,19 +655,28 @@ const confirmDeleteSetting = async (id: number) => {
 
 const createSetting = async () => {
   if (!store.currentNovel || !settingSubCategory.value || !newSettingTitle.value) return
-  try {
-    const content = JSON.parse(newSettingContent.value || '{}')
-    await store.createNovelSetting(store.currentNovel.id, {
-      category: settingTab.value,
-      sub_category: settingSubCategory.value,
-      title: newSettingTitle.value,
-      content
-    })
-    showAddSetting.value = false
-    newSettingTitle.value = ''
-    newSettingContent.value = '{}'
-  } catch (e) {
-    alert('JSON 格式错误')
+  // content 直接作为字符串存储
+  await store.createNovelSetting(store.currentNovel.id, {
+    category: settingTab.value,
+    sub_category: settingSubCategory.value,
+    title: newSettingTitle.value,
+    content: newSettingContent.value
+  })
+  showAddSetting.value = false
+  newSettingTitle.value = ''
+  newSettingContent.value = ''
+}
+
+const deleteSubCategory = async (subCategory: string) => {
+  if (!store.currentNovel) return
+  if (!confirm(`确定删除分类"${subCategory}"及其所有设定吗？`)) return
+
+  const settings = store.novelSettings[settingTab.value]?.[subCategory] || []
+  for (const s of settings) {
+    await store.deleteNovelSetting(store.currentNovel.id, s.id, settingTab.value)
+  }
+  if (settingSubCategory.value === subCategory) {
+    settingSubCategory.value = ''
   }
 }
 
