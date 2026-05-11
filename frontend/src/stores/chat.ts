@@ -76,15 +76,32 @@ export const useChatStore = defineStore('chat', () => {
     return res.data
   }
 
-  // 设定集
-  const novelSettings = ref<Record<string, Record<string, NovelSetting[]>>>({})
+  // 设定集 - 每本小说独立
+const novelSettings = ref<Record<number, Record<string, Record<string, NovelSetting[]>>>>({})
 
-  const fetchNovelSettings = async (novelId: number, category?: string) => {
-    const url = category
-      ? `/api/novels/${novelId}/settings?category=${category}`
-      : `/api/novels/${novelId}/settings`
-    const res = await axios.get(url)
-    novelSettings.value = res.data
+const fetchNovelSettings = async (novelId: number, category?: string) => {
+    // 确保这本小说的数据结构存在
+    if (!novelSettings.value[novelId]) {
+      novelSettings.value[novelId] = {}
+    }
+
+    if (!category) {
+      // 获取所有分类
+      const res = await axios.get(`/api/novels/${novelId}/settings`)
+      novelSettings.value[novelId] = res.data
+    } else {
+      // 获取单个分类 - 合并到现有数据中
+      const res = await axios.get(`/api/novels/${novelId}/settings?category=${category}`)
+      const data = res.data
+      for (const [cat, subs] of Object.entries(data)) {
+        if (!novelSettings.value[novelId][cat]) {
+          novelSettings.value[novelId][cat] = {}
+        }
+        for (const [sub, items] of Object.entries(subs as Record<string, NovelSetting[]>)) {
+          novelSettings.value[novelId][cat][sub] = items
+        }
+      }
+    }
   }
 
   const createNovelSetting = async (novelId: number, setting: { category: string; sub_category: string; title: string; content: any }) => {
@@ -95,15 +112,11 @@ export const useChatStore = defineStore('chat', () => {
 
   const updateNovelSetting = async (novelId: number, settingId: number, updates: { title?: string; content?: any; sub_category?: string }, category?: string) => {
     const res = await axios.put(`/api/novels/${novelId}/settings/${settingId}`, updates)
-    if (category) {
-      await fetchNovelSettings(novelId, category)
-    }
     return res.data
   }
 
   const deleteNovelSetting = async (novelId: number, settingId: number, category: string) => {
     await axios.delete(`/api/novels/${novelId}/settings/${settingId}`)
-    await fetchNovelSettings(novelId, category)
   }
 
   const fetchedNovels = async () => {

@@ -11,6 +11,7 @@
       </div>
       <button @click="createNewNovel" class="mt-4 w-full py-2 border-2 border-dashed border-gray-300 rounded text-gray-500 hover:border-blue-400 hover:text-blue-500">+ 新建</button>
       <button @click="openConfig" class="mt-2 w-full py-2 border rounded flex items-center justify-center gap-2 hover:bg-gray-100">⚙️ 配置</button>
+      <button @click="openExport" class="mt-2 w-full py-2 border rounded flex items-center justify-center gap-2 hover:bg-gray-100">📤 导出</button>
     </div>
 
     <!-- Middle: 对话区 -->
@@ -76,7 +77,7 @@
           </div>
 
           <div v-if="expandedSubCategories.has(sub)" class="space-y-2 ml-2 mt-2">
-            <div v-for="setting in (store.novelSettings[settingTab]?.[sub] || [])" :key="setting.id" class="p-2 bg-white border rounded">
+            <div v-for="setting in (store.novelSettings[store.currentNovel?.id]?.[settingTab]?.[sub] || [])" :key="setting.id" class="p-2 bg-white border rounded">
               <div v-if="!expandedSettings.has(setting.id)" class="flex justify-between items-center">
                 <span class="font-medium text-sm cursor-pointer flex-1" @click="toggleEditSetting(setting)">{{ setting.title }}</span>
                 <button @click.stop="toggleEditSetting(setting)" class="text-gray-400 hover:text-blue-500"><ChevronDown class="w-4 h-4" /></button>
@@ -139,6 +140,13 @@
       </div>
     </div>
 
+    <ExportModal
+      :show="showExport"
+      :novel-title="store.currentNovel?.title || ''"
+      :settings="store.novelSettings[store.currentNovel?.id] || {}"
+      @close="showExport = false"
+    />
+
     <div v-if="showAddNovel" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div class="bg-white rounded-lg p-6 w-80">
         <div class="font-bold mb-4">新建小说</div>
@@ -167,6 +175,7 @@
 </template><script setup lang="ts">
 import { ref, onMounted, nextTick, watch, computed } from 'vue'
 import { Copy, Trash2, ChevronDown, ChevronUp, Edit2 } from 'lucide-vue-next'
+import ExportModal from './components/ExportModal.vue'
 import { useChatStore } from './stores/chat'
 import type { Novel, NovelSetting } from './stores/chat'
 
@@ -215,11 +224,6 @@ onMounted(async () => {
     await store.selectNovel(store.novels[0])
     await store.fetchNovelFlows(store.novels[0].id)
     await store.fetchNovelSettings(store.novels[0].id, settingTab.value)
-    // 自动展开第一个分类
-    const firstSub = currentSubCategories.value[0]
-    if (firstSub) {
-      expandedSubCategories.value.add(firstSub)
-    }
     showNovelDetail.value = true
   }
 })
@@ -329,6 +333,7 @@ const addCustomFlow = async () => {
 }
 
 const showConfig = ref(false)
+const showExport = ref(false)
 const configTab = ref('api')
 
 // 设定集管理状态
@@ -382,12 +387,12 @@ const toggleSubCategory = (sub: string) => {
 }
 
 const currentSubCategories = computed(() => {
-  const cat = store.novelSettings[settingTab.value]
+  const cat = store.novelSettings[store.currentNovel?.id]?.[settingTab.value]
   return cat ? Object.keys(cat) : []
 })
 
 const currentSettings = computed(() => {
-  const cat = store.novelSettings[settingTab.value]
+  const cat = store.novelSettings[store.currentNovel?.id]?.[settingTab.value]
   if (!cat || !settingSubCategory.value) return []
   return cat[settingSubCategory.value] || []
 })
@@ -485,13 +490,18 @@ const selectSubCategoryAndAdd = async (sub: string) => {
 const deleteSubCategory = async (subCategory: string) => {
   if (!store.currentNovel) return
   if (!confirm(`确定删除分类"${subCategory}"及其所有设定吗？`)) return
+  const novelId = store.currentNovel.id
 
-  const settings = store.novelSettings[settingTab.value]?.[subCategory] || []
+  const settings = store.novelSettings[novelId]?.[settingTab.value]?.[subCategory] || []
   for (const s of settings) {
-    await store.deleteNovelSetting(store.currentNovel.id, s.id, settingTab.value)
+    await store.deleteNovelSetting(novelId, s.id, settingTab.value)
   }
-  // 刷新数据
-  await store.fetchNovelSettings(store.currentNovel.id, settingTab.value)
+  // 先清空这本小说的该分类数据
+  if (store.novelSettings[novelId]?.[settingTab.value]) {
+    delete store.novelSettings[novelId][settingTab.value][subCategory]
+  }
+  // 重新获取所有分类（不带category参数，避免后端bug）
+  await store.fetchNovelSettings(novelId)
 }
 
 const renameSubCategory = async (subCategory: string) => {
@@ -500,7 +510,7 @@ const renameSubCategory = async (subCategory: string) => {
   if (!newName || newName === subCategory) return
 
   // 更新该分类下所有设定的 sub_category
-  const settings = store.novelSettings[settingTab.value]?.[subCategory] || []
+  const settings = store.novelSettings[store.currentNovel?.id]?.[settingTab.value]?.[subCategory] || []
   for (const s of settings) {
     await store.updateNovelSetting(store.currentNovel.id, s.id, {
       title: s.title,
@@ -518,6 +528,16 @@ const openConfig = async () => {
   await store.fetchSystemConfig()
   // TODO: 启用 prompt templates 需要后端 prompts router
   // await store.fetchPromptTemplates()
+}
+
+const openExport = async () => {
+  if (store.currentNovel) {
+    // 获取所有三个Tab的数据
+    await store.fetchNovelSettings(store.currentNovel.id, '架构')
+    await store.fetchNovelSettings(store.currentNovel.id, '大纲')
+    await store.fetchNovelSettings(store.currentNovel.id, '备忘录')
+  }
+  showExport.value = true
 }
 
 const saveConfig = async () => {
