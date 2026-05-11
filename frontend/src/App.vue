@@ -138,9 +138,11 @@
       <div class="space-y-4">
         <div v-for="sub in currentSubCategories" :key="sub">
           <!-- 分类标题 -->
-          <div class="flex justify-between items-center py-1 border-b bg-gray-100">
+          <div class="flex justify-between items-center py-1 border-b">
             <span class="font-medium text-sm">{{ sub }}</span>
-            <button @click="deleteSubCategory(sub)" class="text-gray-400 hover:text-red-500 text-xs">删除分类</button>
+            <button @click="deleteSubCategory(sub)" class="text-gray-400 hover:text-red-500">
+              <Trash2 class="w-4 h-4" />
+            </button>
           </div>
 
           <!-- 该分类下的设定 -->
@@ -418,7 +420,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, nextTick, watch, computed } from 'vue'
-import { Copy } from 'lucide-vue-next'
+import { Copy, Trash2 } from 'lucide-vue-next'
 import { useChatStore } from './stores/chat'
 import type { Novel, NovelSetting } from './stores/chat'
 
