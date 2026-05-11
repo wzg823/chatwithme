@@ -608,10 +608,19 @@ const switchSettingTab = async (tab: string) => {
   }
 }
 
-const addNewSubCategory = () => {
+const addNewSubCategory = async () => {
   const name = prompt('请输入新分类名称:')
-  if (name && name.trim()) {
+  if (name && name.trim() && store.currentNovel) {
+    // 自动创建一个空设定来创建分类
+    await store.createNovelSetting(store.currentNovel.id, {
+      category: settingTab.value,
+      sub_category: name.trim(),
+      title: '新设定',
+      content: {}
+    })
     settingSubCategory.value = name.trim()
+    // 刷新数据
+    await store.fetchNovelSettings(store.currentNovel.id, settingTab.value)
   }
 }
 
