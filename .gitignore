@@ -41,3 +41,5 @@ dist/
 .superpowers/
 .claude/skills/ui-ux-pro-max/scripts/__pycache__/
 .claude/settings.local.json
+/docs.superpowers.plans/2026-05-12-export-feature.md
+/docs.superpowers.specs/2026-05-12-export-feature-design.md
