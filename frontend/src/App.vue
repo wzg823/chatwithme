@@ -617,7 +617,7 @@ const addNewSubCategory = async () => {
       category: settingTab.value,
       sub_category: name.trim(),
       title: '新设定',
-      content: {}
+      content: ''
     })
     settingSubCategory.value = name.trim()
     // 刷新数据
