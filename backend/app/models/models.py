@@ -16,6 +16,7 @@ class Novel(Base):
     chapters = relationship("Chapter", back_populates="novel")
     plot_threads = relationship("PlotThread", back_populates="novel")
     flows = relationship("NovelFlows", back_populates="novel")
+    novel_settings = relationship("NovelSetting", back_populates="novel", cascade="all, delete")
 
 class Message(Base):
     __tablename__ = "messages"
@@ -97,6 +98,7 @@ class PromptButton(Base):
 
 class ModelConfig(Base):
     __tablename__ = "model_configs"
+    __protected_namespaces__ = ()
     id = Column(Integer, primary_key=True, index=True)
     provider = Column(String, default="openai")
     base_url = Column(String, nullable=True)
@@ -108,6 +110,7 @@ class ModelConfig(Base):
 
 class UserModelPreference(Base):
     __tablename__ = "user_model_preferences"
+    __protected_namespaces__ = ()
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, nullable=True)
     model_config_id = Column(Integer, ForeignKey("model_configs.id"))
@@ -123,3 +126,16 @@ class NovelFlows(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     novel = relationship("Novel", back_populates="flows")
+
+class NovelSetting(Base):
+    __tablename__ = "novel_settings"
+    id = Column(Integer, primary_key=True, index=True)
+    novel_id = Column(Integer, ForeignKey("novels.id"))
+    category = Column(String)  # '架构' | '大纲' | '备忘录'
+    sub_category = Column(String)  # 子分类名称，用户自定义
+    title = Column(String)      # 条目标题
+    content = Column(Text)     # JSON 格式的内容
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    novel = relationship("Novel", back_populates="novel_settings")

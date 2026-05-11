@@ -23,6 +23,17 @@ export interface WritingFlow {
   created_at?: string
 }
 
+export interface NovelSetting {
+  id: number
+  novel_id: number
+  category: string
+  sub_category: string
+  title: string
+  content: any
+  created_at?: string
+  updated_at?: string
+}
+
 export const useChatStore = defineStore('chat', () => {
   const novels = ref<Novel[]>([])
   const currentNovel = ref<Novel | null>(null)
@@ -63,6 +74,36 @@ export const useChatStore = defineStore('chat', () => {
       novelFlows.value[idx] = res.data
     }
     return res.data
+  }
+
+  // 设定集
+  const novelSettings = ref<Record<string, Record<string, NovelSetting[]>>>({})
+
+  const fetchNovelSettings = async (novelId: number, category?: string) => {
+    const url = category
+      ? `/api/novels/${novelId}/settings?category=${category}`
+      : `/api/novels/${novelId}/settings`
+    const res = await axios.get(url)
+    novelSettings.value = res.data
+  }
+
+  const createNovelSetting = async (novelId: number, setting: { category: string; sub_category: string; title: string; content: any }) => {
+    const res = await axios.post(`/api/novels/${novelId}/settings`, setting)
+    await fetchNovelSettings(novelId, setting.category)
+    return res.data
+  }
+
+  const updateNovelSetting = async (novelId: number, settingId: number, updates: { title?: string; content?: any; sub_category?: string }, category?: string) => {
+    const res = await axios.put(`/api/novels/${novelId}/settings/${settingId}`, updates)
+    if (category) {
+      await fetchNovelSettings(novelId, category)
+    }
+    return res.data
+  }
+
+  const deleteNovelSetting = async (novelId: number, settingId: number, category: string) => {
+    await axios.delete(`/api/novels/${novelId}/settings/${settingId}`)
+    await fetchNovelSettings(novelId, category)
   }
 
   const fetchedNovels = async () => {
@@ -422,6 +463,11 @@ export const useChatStore = defineStore('chat', () => {
     fetchNovelFlows,
     addNovelFlow,
     removeNovelFlow,
-    updateNovelFlow
+    updateNovelFlow,
+    novelSettings,
+    fetchNovelSettings,
+    createNovelSetting,
+    updateNovelSetting,
+    deleteNovelSetting
   }
 })
