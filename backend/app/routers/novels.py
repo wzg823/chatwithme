@@ -40,6 +40,11 @@ class NovelFlowsCreate(BaseModel):
     prompt: str | None = None
     from_template: str | None = None
 
+class NovelFlowsUpdate(BaseModel):
+    name: str | None = None
+    prompt: str | None = None
+    enabled: bool | None = None
+
 @router.get("/novels", response_model=list[NovelSchema])
 def get_novels(db: Session = Depends(get_db)):
     return db.query(Novel).all()
@@ -138,3 +143,19 @@ def delete_novel_flow(novel_id: int, flow_id: int, db: Session = Depends(get_db)
     db.delete(flow)
     db.commit()
     return {"deleted": True}
+
+@router.put("/novels/{novel_id}/flows/{flow_id}", response_model=NovelFlowsSchema)
+def update_novel_flow(novel_id: int, flow_id: int, flow: NovelFlowsUpdate, db: Session = Depends(get_db)):
+    """更新小说的流程"""
+    db_flow = db.query(NovelFlows).filter(NovelFlows.id == flow_id, NovelFlows.novel_id == novel_id).first()
+    if not db_flow:
+        raise HTTPException(status_code=404, detail="Flow not found")
+    if flow.name is not None:
+        db_flow.name = flow.name
+    if flow.prompt is not None:
+        db_flow.prompt = flow.prompt
+    if flow.enabled is not None:
+        db_flow.enabled = flow.enabled
+    db.commit()
+    db.refresh(db_flow)
+    return db_flow
