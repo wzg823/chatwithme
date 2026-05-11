@@ -120,20 +120,97 @@
     </div>
 
     <!-- Right: 写作辅助面板 -->
-    <div class="w-[500px] border-l border-gray-200 bg-gray-50 p-4">
-      <div class="flex gap-6 mb-4 border-b">
+    <div class="w-[500px] border-l border-gray-200 bg-gray-50 p-4 overflow-y-auto">
+      <!-- Tab -->
+      <div class="flex gap-2 mb-4 border-b">
         <button
-          v-for="tab in ['世界观', '角色', '大纲', '伏笔', 'AI配置']"
+          v-for="tab in ['架构', '大纲', '备忘录']"
           :key="tab"
-          @click="activeTab = tab"
-          class="px-4 py-2 text-base"
-          :class="activeTab === tab ? 'border-b-2 border-blue-500' : ''"
+          @click="switchSettingTab(tab)"
+          class="px-3 py-2 text-sm"
+          :class="settingTab === tab ? 'border-b-2 border-blue-500 font-medium' : 'text-gray-500'"
         >
           {{ tab }}
         </button>
       </div>
-      <div class="text-gray-500 text-sm">
-        {{ activeTab }} 内容展示区
+
+      <!-- 子分类按钮 -->
+      <div class="mb-3 flex gap-2 flex-wrap">
+        <button
+          v-for="sub in currentSubCategories"
+          :key="sub"
+          @click="settingSubCategory = sub"
+          class="px-2 py-1 text-xs border rounded"
+          :class="settingSubCategory === sub ? 'bg-blue-100 border-blue-500' : 'bg-white'"
+        >
+          {{ sub }}
+        </button>
+        <button
+          @click="addNewSubCategory"
+          class="px-2 py-1 text-xs border border-dashed rounded hover:border-blue-400"
+        >
+          + 新增分类
+        </button>
+      </div>
+
+      <!-- 设定列表 -->
+      <div class="space-y-2">
+        <div
+          v-for="setting in currentSettings"
+          :key="setting.id"
+          class="p-2 bg-white border rounded"
+        >
+          <div class="flex justify-between items-center">
+            <span
+              class="font-medium text-sm cursor-pointer"
+              :class="editingSettingId === setting.id ? 'text-blue-600' : ''"
+              @click="toggleEditSetting(setting)"
+            >
+              {{ setting.title }}
+            </span>
+            <button @click="confirmDeleteSetting(setting.id)" class="text-gray-400 hover:text-red-500 text-xs">×</button>
+          </div>
+          <!-- 编辑区 -->
+          <div v-if="editingSettingId === setting.id" class="mt-2 space-y-2">
+            <input
+              v-model="editingTitle"
+              class="w-full border rounded px-2 py-1 text-sm"
+              placeholder="标题"
+            />
+            <textarea
+              v-model="editingContent"
+              class="w-full border rounded px-2 py-1 text-sm font-mono"
+              rows="6"
+              placeholder="JSON 内容"
+            ></textarea>
+            <div class="flex gap-2">
+              <button @click="saveSetting" class="px-2 py-1 text-xs bg-blue-500 text-white rounded">保存</button>
+              <button @click="editingSettingId = null" class="px-2 py-1 text-xs border rounded">取消</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 新增按钮 -->
+        <button
+          v-if="settingSubCategory"
+          @click="showAddSetting = true"
+          class="w-full py-2 border-2 border-dashed border-gray-300 rounded text-gray-500 hover:border-blue-400 text-sm"
+        >
+          + 新增设定
+        </button>
+      </div>
+
+      <!-- 新增弹窗 -->
+      <div v-if="showAddSetting" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-4 w-80">
+          <div class="font-bold mb-3">新增设定</div>
+          <input v-model="newSettingTitle" class="w-full border rounded px-2 py-1 mb-2" placeholder="标题" />
+          <textarea v-model="newSettingContent" class="w-full border rounded px-2 py-1 mb-3 font-mono" rows="4" placeholder="JSON 内容" />
+          <div class="flex justify-end gap-2">
+            <button @click="showAddSetting = false" class="px-3 py-1 border rounded">取消</button>
+            <button @click="createSetting" class="px-3 py-1 bg-blue-500 text-white rounded">确定</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -344,7 +421,7 @@
 import { ref, onMounted, nextTick, watch, computed } from 'vue'
 import { Copy } from 'lucide-vue-next'
 import { useChatStore } from './stores/chat'
-import type { Novel } from './stores/chat'
+import type { Novel, NovelSetting } from './stores/chat'
 
 const store = useChatStore()
 const inputMessage = ref('')
@@ -456,6 +533,7 @@ const viewNovelDetail = async (novel?: Novel) => {
   if (store.currentNovel) {
     showNovelDetail.value = true
     await store.fetchNovelFlows(store.currentNovel.id)
+    await store.fetchNovelSettings(store.currentNovel.id, settingTab.value)
   }
 }
 
@@ -499,6 +577,92 @@ const addCustomFlow = async () => {
 
 const showConfig = ref(false)
 const configTab = ref('api')
+
+// 设定集管理状态
+const settingTab = ref('架构')
+const settingSubCategory = ref('')
+const editingSettingId = ref<number | null>(null)
+const editingTitle = ref('')
+const editingContent = ref('')
+const showAddSetting = ref(false)
+const newSettingTitle = ref('')
+const newSettingContent = ref('{}')
+
+const currentSubCategories = computed(() => {
+  const cat = store.novelSettings[settingTab.value]
+  return cat ? Object.keys(cat) : []
+})
+
+const currentSettings = computed(() => {
+  const cat = store.novelSettings[settingTab.value]
+  if (!cat || !settingSubCategory.value) return []
+  return cat[settingSubCategory.value] || []
+})
+
+const switchSettingTab = async (tab: string) => {
+  settingTab.value = tab
+  settingSubCategory.value = ''
+  editingSettingId.value = null
+  if (store.currentNovel) {
+    await store.fetchNovelSettings(store.currentNovel.id, tab)
+  }
+}
+
+const addNewSubCategory = () => {
+  const name = prompt('请输入新分类名称:')
+  if (name && name.trim()) {
+    settingSubCategory.value = name.trim()
+  }
+}
+
+const toggleEditSetting = (setting: NovelSetting) => {
+  if (editingSettingId.value === setting.id) {
+    editingSettingId.value = null
+  } else {
+    editingSettingId.value = setting.id
+    editingTitle.value = setting.title
+    editingContent.value = JSON.stringify(setting.content || {}, null, 2)
+  }
+}
+
+const saveSetting = async () => {
+  if (!store.currentNovel || !editingSettingId.value) return
+  try {
+    const content = JSON.parse(editingContent.value || '{}')
+    await store.updateNovelSetting(store.currentNovel.id, editingSettingId.value, {
+      title: editingTitle.value,
+      content
+    }, settingTab.value)
+    editingSettingId.value = null
+  } catch (e) {
+    alert('JSON 格式错误')
+  }
+}
+
+const confirmDeleteSetting = async (id: number) => {
+  if (!store.currentNovel) return
+  if (confirm('确定删除此设定吗？')) {
+    await store.deleteNovelSetting(store.currentNovel.id, id, settingTab.value)
+  }
+}
+
+const createSetting = async () => {
+  if (!store.currentNovel || !settingSubCategory.value || !newSettingTitle.value) return
+  try {
+    const content = JSON.parse(newSettingContent.value || '{}')
+    await store.createNovelSetting(store.currentNovel.id, {
+      category: settingTab.value,
+      sub_category: settingSubCategory.value,
+      title: newSettingTitle.value,
+      content
+    })
+    showAddSetting.value = false
+    newSettingTitle.value = ''
+    newSettingContent.value = '{}'
+  } catch (e) {
+    alert('JSON 格式错误')
+  }
+}
 
 const openConfig = async () => {
   showConfig.value = true
