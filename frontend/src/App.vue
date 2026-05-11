@@ -161,7 +161,7 @@
               class="p-2 bg-white border rounded"
             >
               <!-- 收起状态：只显示标题 -->
-              <div v-if="editingSettingId !== setting.id" class="flex justify-between items-center">
+              <div v-if="!expandedSettings.has(setting.id)" class="flex justify-between items-center">
                 <span
                   class="font-medium text-sm cursor-pointer flex-1"
                   @click="toggleEditSetting(setting)"
@@ -174,7 +174,7 @@
               </div>
 
               <!-- 展开状态：编辑区 -->
-              <div v-if="editingSettingId === setting.id" class="space-y-2">
+              <div v-if="expandedSettings.has(setting.id)" class="space-y-2">
                 <input
                   v-model="editingTitle"
                   class="w-full border rounded px-2 py-1 text-sm"
@@ -188,7 +188,7 @@
                 ></textarea>
                 <div class="flex gap-2">
                   <button @click="saveSetting" class="flex-1 px-2 py-1 text-xs bg-blue-500 text-white rounded">保存</button>
-                  <button @click="editingSettingId = null" class="flex-1 px-2 py-1 text-xs border rounded">取消</button>
+                  <button @click="expandedSettings.delete(setting.id)" class="flex-1 px-2 py-1 text-xs border rounded">取消</button>
                   <button @click="confirmDeleteSetting(setting.id)" class="px-2 py-1 text-xs text-red-500 border border-red-500 rounded hover:bg-red-50">删除</button>
                 </div>
               </div>
@@ -600,7 +600,7 @@ const configTab = ref('api')
 // 设定集管理状态
 const settingTab = ref('架构')
 const settingSubCategory = ref('')
-const editingSettingId = ref<number | null>(null)
+const expandedSettings = ref<Set<number>>(new Set())
 const editingTitle = ref('')
 const editingContent = ref('')
 const showAddSetting = ref(false)
@@ -626,7 +626,7 @@ const currentSettings = computed(() => {
 const switchSettingTab = async (tab: string) => {
   settingTab.value = tab
   settingSubCategory.value = ''
-  editingSettingId.value = null
+  expandedSettings.value.clear()
   expandedSubCategory.value = ''
   if (store.currentNovel) {
     await store.fetchNovelSettings(store.currentNovel.id, tab)
@@ -650,30 +650,32 @@ const addNewSubCategory = async () => {
 }
 
 const toggleEditSetting = (setting: NovelSetting) => {
-  if (editingSettingId.value === setting.id) {
-    editingSettingId.value = null
+  if (expandedSettings.value.has(setting.id)) {
+    expandedSettings.value.delete(setting.id)
   } else {
-    editingSettingId.value = setting.id
-    editingTitle.value = setting.title
-    // content 已经是字符串，直接使用
-    editingContent.value = typeof setting.content === 'string' ? setting.content : JSON.stringify(setting.content || '')
+    expandedSettings.value.add(setting.id)
   }
+  editingTitle.value = setting.title
+  editingContent.value = typeof setting.content === 'string' ? setting.content : ''
 }
 
 const saveSetting = async () => {
-  if (!store.currentNovel || !editingSettingId.value) return
+  if (!store.currentNovel) return
+  // 获取当前正在编辑的ID
+  const editingId = Array.from(expandedSettings.value).pop()
+  if (!editingId) return
   // content 直接作为字符串存储
-  await store.updateNovelSetting(store.currentNovel.id, editingSettingId.value, {
+  await store.updateNovelSetting(store.currentNovel.id, editingId, {
     title: editingTitle.value,
     content: editingContent.value
   }, settingTab.value)
-  editingSettingId.value = null
   // 刷新数据
   await store.fetchNovelSettings(store.currentNovel.id, settingTab.value)
 }
 
 const confirmDeleteSetting = async (id: number) => {
   if (!store.currentNovel) return
+  expandedSettings.value.delete(id)
   if (confirm('确定删除此设定吗？')) {
     await store.deleteNovelSetting(store.currentNovel.id, id, settingTab.value)
     // 刷新数据
