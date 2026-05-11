@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import chat, novels, model_configs
+from app.routers import chat, novels, model_configs, settings
 from app.models.database import create_tables, init_default_model_configs
 
 app = FastAPI(title="ChatWithMe API")
@@ -20,6 +20,7 @@ app.add_middleware(
 app.include_router(chat.router, prefix="/api")
 app.include_router(novels.router, prefix="/api")
 app.include_router(model_configs.router, prefix="/api")
+app.include_router(settings.router, prefix="/api")
 
 @app.get("/api/health")
 def health():
