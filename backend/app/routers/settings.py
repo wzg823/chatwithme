@@ -29,6 +29,7 @@ class NovelSettingCreate(BaseModel):
 
 class NovelSettingUpdate(BaseModel):
     title: Optional[str] = None
+    sub_category: Optional[str] = None
     content: Optional[str] = ""
 
 @router.get("/novels/{novel_id}/settings", response_model=dict)
@@ -88,6 +89,8 @@ def update_novel_setting(novel_id: int, setting_id: int, setting: NovelSettingUp
         db_setting.title = setting.title
     if setting.content is not None:
         db_setting.content = setting.content
+    if setting.sub_category is not None:
+        db_setting.sub_category = setting.sub_category
 
     db.commit()
     db.refresh(db_setting)

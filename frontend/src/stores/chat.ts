@@ -93,7 +93,7 @@ export const useChatStore = defineStore('chat', () => {
     return res.data
   }
 
-  const updateNovelSetting = async (novelId: number, settingId: number, updates: { title?: string; content?: any }, category?: string) => {
+  const updateNovelSetting = async (novelId: number, settingId: number, updates: { title?: string; content?: any; sub_category?: string }, category?: string) => {
     const res = await axios.put(`/api/novels/${novelId}/settings/${settingId}`, updates)
     if (category) {
       await fetchNovelSettings(novelId, category)

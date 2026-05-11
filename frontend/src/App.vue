@@ -143,9 +143,14 @@
             @click="toggleSubCategory(sub)"
           >
             <span class="font-medium text-sm">{{ sub }}</span>
-            <button @click.stop="deleteSubCategory(sub)" class="text-gray-400 hover:text-red-500">
-              <Trash2 class="w-4 h-4" />
-            </button>
+            <div class="flex items-center gap-1">
+              <button @click.stop="renameSubCategory(sub)" class="text-gray-400 hover:text-blue-500">
+                <Edit2 class="w-4 h-4" />
+              </button>
+              <button @click.stop="deleteSubCategory(sub)" class="text-gray-400 hover:text-red-500">
+                <Trash2 class="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
           <!-- 该分类下的设定 -->
@@ -425,7 +430,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, nextTick, watch, computed } from 'vue'
-import { Copy, Trash2, X } from 'lucide-vue-next'
+import { Copy, Trash2, X, Edit2 } from 'lucide-vue-next'
 import { useChatStore } from './stores/chat'
 import type { Novel, NovelSetting } from './stores/chat'
 
@@ -703,6 +708,25 @@ const deleteSubCategory = async (subCategory: string) => {
   for (const s of settings) {
     await store.deleteNovelSetting(store.currentNovel.id, s.id, settingTab.value)
   }
+  // 刷新数据
+  await store.fetchNovelSettings(store.currentNovel.id, settingTab.value)
+}
+
+const renameSubCategory = async (subCategory: string) => {
+  if (!store.currentNovel) return
+  const newName = prompt('请输入新分类名称:', subCategory)
+  if (!newName || newName === subCategory) return
+
+  // 更新该分类下所有设定的 sub_category
+  const settings = store.novelSettings[settingTab.value]?.[subCategory] || []
+  for (const s of settings) {
+    await store.updateNovelSetting(store.currentNovel.id, s.id, {
+      title: s.title,
+      content: s.content,
+      sub_category: newName
+    }, settingTab.value)
+  }
+  expandedSubCategory.value = newName
   // 刷新数据
   await store.fetchNovelSettings(store.currentNovel.id, settingTab.value)
 }
