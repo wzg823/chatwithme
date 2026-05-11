@@ -158,22 +158,23 @@
             <div
               v-for="setting in (store.novelSettings[settingTab]?.[sub] || [])"
               :key="setting.id"
-              class="p-2 bg-white border rounded cursor-pointer hover:border-blue-400"
-              @click="toggleEditSetting(setting)"
+              class="p-2 bg-white border rounded"
             >
-              <div class="flex justify-between items-center">
+              <!-- 收起状态：只显示标题和展开按钮 -->
+              <div v-if="editingSettingId !== setting.id" class="flex justify-between items-center">
                 <span
-                  class="font-medium text-sm"
-                  :class="editingSettingId === setting.id ? 'text-blue-600' : ''"
+                  class="font-medium text-sm cursor-pointer flex-1"
+                  @click="toggleEditSetting(setting)"
                 >
                   {{ setting.title }}
                 </span>
-                <button @click.stop="confirmDeleteSetting(setting.id)" class="text-gray-400 hover:text-red-500">
-                  <X class="w-4 h-4" />
+                <button @click.stop="toggleEditSetting(setting)" class="text-gray-400 hover:text-blue-500">
+                  <Edit2 class="w-4 h-4" />
                 </button>
               </div>
-              <!-- 编辑区 -->
-              <div v-if="editingSettingId === setting.id" class="mt-2 space-y-2">
+
+              <!-- 展开状态：编辑区 -->
+              <div v-if="editingSettingId === setting.id" class="space-y-2">
                 <input
                   v-model="editingTitle"
                   class="w-full border rounded px-2 py-1 text-sm"
@@ -186,8 +187,9 @@
                   placeholder="内容"
                 ></textarea>
                 <div class="flex gap-2">
-                  <button @click="saveSetting" class="px-2 py-1 text-xs bg-blue-500 text-white rounded">保存</button>
-                  <button @click="editingSettingId = null" class="px-2 py-1 text-xs border rounded">取消</button>
+                  <button @click="saveSetting" class="flex-1 px-2 py-1 text-xs bg-blue-500 text-white rounded">保存</button>
+                  <button @click="editingSettingId = null" class="flex-1 px-2 py-1 text-xs border rounded">取消</button>
+                  <button @click="confirmDeleteSetting(setting.id)" class="px-2 py-1 text-xs text-red-500 border border-red-500 rounded hover:bg-red-50">删除</button>
                 </div>
               </div>
             </div>
@@ -430,7 +432,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, nextTick, watch, computed } from 'vue'
-import { Copy, Trash2, X, Edit2 } from 'lucide-vue-next'
+import { Copy, Trash2, Edit2 } from 'lucide-vue-next'
 import { useChatStore } from './stores/chat'
 import type { Novel, NovelSetting } from './stores/chat'
 
