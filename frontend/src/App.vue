@@ -1,32 +1,16 @@
 <template>
-  <div>
-    <div class="h-screen flex">
-      <!-- Left: 小说列表 -->
-      <div class="w-56 border-r border-gray-200 bg-gray-50 p-4 overflow-y-auto">
+  <div class="h-screen flex">
+    <!-- Left: 小说列表 -->
+    <div class="w-56 border-r border-gray-200 bg-gray-50 p-4 overflow-y-auto">
       <h2 class="font-bold text-lg mb-4">📚 我的小说</h2>
-      <!-- 小说列表，带流程树 -->
       <div v-for="novel in store.novels" :key="novel.id" class="mb-1">
-        <div
-          class="p-2 rounded cursor-pointer hover:bg-gray-100 flex items-center justify-between"
-          :class="{ 'bg-blue-100': store.currentNovel?.id === novel.id }"
-          @click="viewNovelDetail(novel)"
-        >
+        <div class="p-2 rounded cursor-pointer hover:bg-gray-100 flex items-center justify-between" :class="{ 'bg-blue-100': store.currentNovel?.id === novel.id }" @click="viewNovelDetail(novel)">
           <span class="flex-1 truncate">{{ novel.title }}</span>
           <button @click.stop="confirmDelete(novel)" class="text-gray-400 hover:text-red-500 ml-2">×</button>
         </div>
       </div>
-      <button
-        @click="createNewNovel"
-        class="mt-4 w-full py-2 border-2 border-dashed border-gray-300 rounded text-gray-500 hover:border-blue-400 hover:text-blue-500"
-      >
-        + 新建
-      </button>
-      <button
-        @click="openConfig"
-        class="mt-2 w-full py-2 border rounded flex items-center justify-center gap-2 hover:bg-gray-100"
-      >
-        ⚙️ 配置
-      </button>
+      <button @click="createNewNovel" class="mt-4 w-full py-2 border-2 border-dashed border-gray-300 rounded text-gray-500 hover:border-blue-400 hover:text-blue-500">+ 新建</button>
+      <button @click="openConfig" class="mt-2 w-full py-2 border rounded flex items-center justify-center gap-2 hover:bg-gray-100">⚙️ 配置</button>
     </div>
 
     <!-- Middle: 对话区 -->
@@ -44,14 +28,9 @@
             <Sun v-if="!isDark" class="w-5 h-5" />
             <Moon v-else class="w-5 h-5" />
           </button>
-          <select v-model="selectedModel" @change="onModelChange" class="border rounded px-2 py-1">
-            <option v-for="model in store.getModelsForProvider(store.systemConfig.provider)" :key="model" :value="model">{{ model.toUpperCase() }}</option>
-            <option v-if="store.systemConfig.provider === 'custom'" value="">自定义</option>
-          </select>
         </div>
       </div>
 
-      <!-- 详情页：画框网格 -->
       <div v-if="showNovelDetail" class="flex-1 p-6 overflow-y-auto">
         <div class="mb-6 flex items-center justify-between">
           <div>
@@ -60,165 +39,75 @@
           </div>
         </div>
         <div class="grid grid-cols-3 gap-4">
-          <div v-for="flow in store.novelFlows.filter(f => f.enabled)" :key="flow.id"
-            class="node-card h-32 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 hover:shadow-lg transition-all relative overflow-visible"
-            @mouseenter="hoveringFlow = flow.id" @mouseleave="hoveringFlow = null" @click="enterNodeChat(flow.id)">
+          <div v-for="flow in store.novelFlows.filter(f => f.enabled)" :key="flow.id" class="h-32 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 hover:shadow-lg transition-all relative" @click="enterNodeChat(flow.id)">
             <div class="text-xl font-bold text-center flex items-center justify-center h-full">{{ flow.name }}</div>
-            <button v-if="hoveringFlow === flow.id" @click.stop="confirmDeleteFlow(flow.id)"
-              class="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-sm hover:bg-red-600">-</button>
           </div>
-          <div class="border-2 border-dashed border-gray-300 rounded-lg h-32 flex items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-all"
-            @click="showAddFlowModal = true">
+          <div class="border-2 border-dashed border-gray-300 rounded-lg h-32 flex items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50" @click="showAddFlowModal = true">
             <span class="text-2xl text-gray-400">+</span>
           </div>
         </div>
       </div>
 
       <div v-else class="flex-1 overflow-y-auto p-4" ref="messageContainer">
-        <div
-          v-for="msg in store.messages"
-          :key="msg.id"
-          class="mb-4 flex"
-          :class="msg.role === 'user' ? 'justify-end' : 'justify-start'"
-        >
-          <div
-            class="inline-block p-3 rounded-lg max-w-[80%]"
-            :class="msg.role === 'user' ? 'bg-[var(--user-msg-bg)] text-white' : 'bg-[var(--ai-msg-bg)]'"
-          >
-            {{ msg.content }}
-          </div>
-          <button
-            v-if="msg.role === 'assistant'"
-            @click="copyMessage(msg.content)"
-            class="self-end ml-2 mb-1 text-xs text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-200"
-            title="复制内容"
-          >
-            <Copy class="w-3 h-3" />
-          </button>
+        <div v-for="msg in store.messages" :key="msg.id" class="mb-4 flex" :class="msg.role === 'user' ? 'justify-end' : 'justify-start'">
+          <div class="inline-block p-3 rounded-lg max-w-[80%]" :class="msg.role === 'user' ? 'bg-blue-500 text-white' : 'bg-gray-100'">{{ msg.content }}</div>
         </div>
       </div>
 
       <div class="border-t border-gray-200 p-4">
-        <input
-          v-model="inputMessage"
-          @keydown.enter="sendMessage"
-          placeholder="输入消息..."
-          class="w-full border rounded-lg p-3"
-          :disabled="store.loading"
-        />
+        <input v-model="inputMessage" @keydown.enter="sendMessage" placeholder="输入消息..." class="w-full border rounded-lg p-3" :disabled="store.loading" />
         <div class="mt-2 flex gap-2">
-          <button
-            v-for="btn in promptButtons"
-            :key="btn.name"
-            @click="sendWithPrompt(btn)"
-            class="px-3 py-1 border rounded hover:bg-gray-100"
-          >
-            {{ btn.name }}
-          </button>
+          <button v-for="template in store.promptTemplates" :key="template.name" @click="useTemplate(template.content)" class="px-3 py-1 text-sm border rounded hover:bg-gray-100">{{ template.name }}</button>
         </div>
       </div>
     </div>
 
-    <!-- Right: 写作辅助面板 -->
+    <!-- Right: 设定集 -->
     <div class="w-[500px] border-l border-gray-200 bg-gray-50 p-4 overflow-y-auto">
-      <!-- Tab -->
       <div class="flex gap-2 mb-4 border-b">
-        <button
-          v-for="tab in ['架构', '大纲', '备忘录']"
-          :key="tab"
-          @click="switchSettingTab(tab)"
-          class="px-3 py-2 text-sm"
-          :class="settingTab === tab ? 'border-b-2 border-blue-500 font-medium' : 'text-gray-500'"
-        >
-          {{ tab }}
-        </button>
+        <button v-for="tab in ['架构', '大纲', '备忘录']" :key="tab" @click="switchSettingTab(tab)" class="px-3 py-2" :class="settingTab === tab ? 'border-b-2 border-blue-500' : ''">{{ tab }}</button>
       </div>
 
-      <!-- 分类和设定列表 -->
       <div class="space-y-4">
         <div v-for="sub in currentSubCategories" :key="sub">
-          <!-- 分类标题 -->
-          <div
-            class="flex justify-between items-center py-2 border-b cursor-pointer hover:bg-gray-100"
-            @click="toggleSubCategory(sub)"
-          >
-            <span class="font-medium text-sm">{{ sub }}</span>
-            <div class="flex items-center gap-1">
-              <button @click.stop="renameSubCategory(sub)" class="text-gray-400 hover:text-blue-500">
-                <Edit2 class="w-4 h-4" />
-              </button>
-              <button @click.stop="deleteSubCategory(sub)" class="text-gray-400 hover:text-red-500">
-                <Trash2 class="w-4 h-4" />
-              </button>
-            </div>
+          <div class="flex items-center justify-between">
+            <button @click="toggleSubCategory(sub)" class="text-sm font-medium flex-1 text-left">{{ sub }}</button>
+            <button @click="deleteSubCategory(sub)" class="text-xs text-gray-400 hover:text-red-500">删除</button>
           </div>
 
-          <!-- 该分类下的设定 -->
-          <div v-if="expandedSubCategory === sub" class="space-y-2 ml-2 mt-2">
-            <div
-              v-for="setting in (store.novelSettings[settingTab]?.[sub] || [])"
-              :key="setting.id"
-              class="p-2 bg-white border rounded"
-            >
-              <!-- 收起状态：只显示标题 -->
+          <div v-if="expandedSubCategories.has(sub)" class="space-y-2 ml-2 mt-2">
+            <div v-for="setting in (store.novelSettings[settingTab]?.[sub] || [])" :key="setting.id" class="p-2 bg-white border rounded">
               <div v-if="!expandedSettings.has(setting.id)" class="flex justify-between items-center">
-                <span
-                  class="font-medium text-sm cursor-pointer flex-1"
-                  @click="toggleEditSetting(setting)"
-                >
-                  {{ setting.title }}
-                </span>
-                <button @click.stop="toggleEditSetting(setting)" class="text-gray-400 hover:text-blue-500">
-                  <ChevronDown class="w-4 h-4" />
-                </button>
+                <span class="font-medium text-sm cursor-pointer flex-1" @click="toggleEditSetting(setting)">{{ setting.title }}</span>
+                <button @click.stop="toggleEditSetting(setting)" class="text-gray-400 hover:text-blue-500"><ChevronDown class="w-4 h-4" /></button>
               </div>
 
-              <!-- 展开状态：编辑区 -->
               <div v-if="expandedSettings.has(setting.id)" class="space-y-2">
-                <input
-                  v-model="editingTitle"
-                  class="w-full border rounded px-2 py-1 text-sm"
-                  placeholder="标题"
-                />
-                <textarea
-                  v-model="editingContent"
-                  class="w-full border rounded px-2 py-1 text-sm"
-                  rows="4"
-                  placeholder="内容"
-                ></textarea>
-                <div class="flex gap-2">
+                <input :value="getEditingState(setting.id, 'title', setting.title)" @change="handleTitleChange(setting.id, $event)" class="w-full border rounded px-2 py-1 text-sm" placeholder="标题" />
+                <textarea :value="getEditingState(setting.id, 'content', setting.content)" @change="handleContentChange(setting.id, $event)" class="w-full border rounded px-2 py-1 text-sm" rows="4" placeholder="内容"></textarea>
+                <div class="flex items-center gap-2">
                   <button @click="saveSetting" class="flex-1 px-2 py-1 text-xs bg-blue-500 text-white rounded">保存</button>
-                  <button @click="expandedSettings.delete(setting.id)" class="flex-1 px-2 py-1 text-xs border rounded">取消</button>
-                  <button @click="confirmDeleteSetting(setting.id)" class="px-2 py-1 text-xs text-red-500 border border-red-500 rounded hover:bg-red-50">删除</button>
+                  <button @click="collapseSetting(setting.id)" class="flex-1 px-2 py-1 text-xs border rounded">取消</button>
+                  <button @click="confirmDeleteSetting(setting.id)" class="flex-1 px-2 py-1 text-xs text-red-500 border border-red-500 rounded hover:bg-red-50">删除</button>
+                  <button @click="collapseSetting(setting.id)" class="p-1 text-gray-500 hover:text-gray-700">
+                    <ChevronUp class="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             </div>
 
-            <!-- 新增设定按钮 -->
-            <button
-              @click="selectSubCategoryAndAdd(sub)"
-              class="w-full py-1 text-xs border border-dashed rounded hover:border-blue-400"
-            >
-              + 新增设定
-            </button>
+            <button @click="selectSubCategoryAndAdd(sub)" class="w-full py-1 text-xs border border-dashed rounded hover:border-blue-400">+ 新增设定</button>
           </div>
         </div>
 
-        <!-- 新增分类按钮 -->
-        <button
-          @click="addNewSubCategory"
-          class="w-full py-2 border-2 border-dashed border-gray-300 rounded text-gray-500 hover:border-blue-400 text-sm"
-        >
-          + 新增分类
-        </button>
+        <button @click="addNewSubCategory" class="w-full py-2 border-2 border-dashed border-gray-300 rounded text-gray-500 hover:border-blue-400 text-sm">+ 新增分类</button>
       </div>
 
-      <!-- 新增弹窗 -->
       <div v-if="showAddSetting" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
         <div class="bg-white rounded-lg p-4 w-80">
           <div class="font-bold mb-3">新增设定</div>
           <input v-model="newSettingTitle" class="w-full border rounded px-2 py-1 mb-2" placeholder="标题" />
-          <textarea v-model="newSettingContent" class="w-full border rounded px-2 py-1 mb-3" rows="4" placeholder="内容" />
+          <textarea v-model="newSettingContent" class="w-full border rounded px-2 py-1 mb-3" rows="4" placeholder="内容"></textarea>
           <div class="flex justify-end gap-2">
             <button @click="showAddSetting = false" class="px-3 py-1 border rounded">取消</button>
             <button @click="createSetting" class="px-3 py-1 bg-blue-500 text-white rounded">确定</button>
@@ -227,212 +116,57 @@
       </div>
     </div>
 
-    <!-- 配置弹窗 -->
     <div v-if="showConfig" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div class="bg-[var(--bg-primary)] rounded-lg w-[500px] max-h-[80vh] overflow-y-auto">
+      <div class="bg-white rounded-lg w-[500px] max-h-[80vh] overflow-y-auto p-4">
         <div class="flex items-center justify-between p-4 border-b">
           <span class="font-bold">⚙️ 系统配置</span>
           <button @click="showConfig = false">✕</button>
         </div>
-        <div class="flex border-b">
-          <button
-            @click="configTab = 'api'"
-            class="px-4 py-2"
-            :class="configTab === 'api' ? 'border-b-2 border-blue-500' : ''"
-          >
-            API配置
-          </button>
-          <button
-            @click="configTab = 'prompt'"
-            class="px-4 py-2"
-            :class="configTab === 'prompt' ? 'border-b-2 border-blue-500' : ''"
-          >
-            提示词模板
-          </button>
-          <button
-            @click="configTab = 'flows'"
-            class="px-4 py-2"
-            :class="configTab === 'flows' ? 'border-b-2 border-blue-500' : ''"
-          >
-            创作流程
-          </button>
-        </div>
         <div class="p-4">
-          <div v-if="configTab === 'api'">
-            <div class="mb-4">
-              <label class="block text-sm mb-1">Provider</label>
-              <select v-model="store.systemConfig.provider" class="w-full border rounded p-2">
-                <option value="openai">OpenAI</option>
-                <option value="deepseek">DeepSeek</option>
-                <option value="custom">Custom</option>
-              </select>
-            </div>
-            <div class="mb-4">
-              <label class="block text-sm mb-1">API Key</label>
-              <input
-                v-model="store.systemConfig.apiKey"
-                type="password"
-                class="w-full border rounded p-2"
-              />
-            </div>
-            <div class="mb-4">
-              <label class="block text-sm mb-1">模型</label>
-              <select
-                v-model="store.systemConfig.model"
-                class="w-full border rounded p-2"
-                :disabled="store.systemConfig.provider === 'custom'"
-              >
-                <option
-                  v-for="model in store.getModelsForProvider(store.systemConfig.provider)"
-                  :key="model"
-                  :value="model"
-                >
-                  {{ model.toUpperCase() }}
-                </option>
-                <option v-if="store.systemConfig.provider === 'custom'" value="">
-                  自定义模型
-                </option>
-              </select>
-            </div>
-            <div v-if="store.systemConfig.provider === 'custom'" class="mb-4">
-              <label class="block text-sm mb-1">Base URL</label>
-              <input
-                v-model="store.systemConfig.baseUrl"
-                type="text"
-                placeholder="https://api.example.com/v1"
-                class="w-full border rounded p-2"
-              />
-            </div>
-            <div v-if="store.systemConfig.provider === 'custom' && !store.getModelsForProvider(store.systemConfig.provider).includes(store.systemConfig.model)" class="mb-4">
-              <label class="block text-sm mb-1">模型名称</label>
-              <input
-                v-model="store.systemConfig.model"
-                type="text"
-                placeholder="e.g. claude-3-opus"
-                class="w-full border rounded p-2"
-              />
-            </div>
-            <div class="mb-4">
-              <label class="block text-sm mb-1">Temperature: {{ store.systemConfig.temperature }}</label>
-              <input
-                v-model="store.systemConfig.temperature"
-                type="range"
-                min="0"
-                max="2"
-                step="0.1"
-                class="w-full"
-              />
-            </div>
-            <div class="mb-4">
-              <label class="block text-sm mb-1">Max Tokens: {{ store.systemConfig.maxTokens }}</label>
-              <input
-                v-model="store.systemConfig.maxTokens"
-                type="number"
-                min="1"
-                max="128000"
-                class="w-full border rounded p-2"
-              />
-            </div>
+          <div class="mb-4">
+            <label class="block text-sm mb-1">Provider</label>
+            <select v-model="store.systemConfig.provider" class="w-full border rounded p-2">
+              <option value="openai">OpenAI</option>
+              <option value="deepseek">DeepSeek</option>
+            </select>
           </div>
-          <div v-if="configTab === 'prompt'">
-            <div v-for="(t, idx) in store.promptTemplates" :key="idx" class="mb-4">
-              <label class="block text-sm mb-1">{{ t.name }}</label>
-              <textarea
-                v-model="t.content"
-                class="w-full border rounded p-2"
-                rows="2"
-              ></textarea>
-            </div>
+          <div class="mb-4">
+            <label class="block text-sm mb-1">API Key</label>
+            <input v-model="store.systemConfig.apiKey" type="password" class="w-full border rounded p-2" />
           </div>
-          <div v-if="configTab === 'flows'">
-            <div v-for="(flow, idx) in store.writingFlows" :key="flow.id" class="mb-3 p-2 border rounded">
-              <div class="flex items-center gap-2 mb-1">
-                <input
-                  v-model="flow.name"
-                  class="border rounded px-2 py-1 flex-1"
-                  placeholder="名称"
-                />
-                <input
-                  type="checkbox"
-                  v-model="flow.enabled"
-                  :id="'flow-enabled-' + flow.id"
-                />
-                <label :for="'flow-enabled-' + flow.id" class="text-sm">启用</label>
-                <button @click="removeFlow(idx)" class="text-red-500">删除</button>
-              </div>
-              <textarea
-                v-model="flow.prompt"
-                class="w-full border rounded p-2"
-                rows="2"
-                placeholder="流程提示词前缀"
-              ></textarea>
-            </div>
-            <button @click="addFlow" class="w-full py-2 border-2 border-dashed border-gray-300 rounded text-gray-500 hover:border-blue-400">
-              + 新增流程
-            </button>
-          </div>
+          <button @click="store.saveSystemConfig()" class="px-4 py-2 bg-blue-500 text-white rounded">保存配置</button>
         </div>
-        <div class="flex justify-end gap-2 p-4 border-t">
-          <button @click="showConfig = false" class="px-4 py-2 border rounded">取消</button>
-          <button @click="saveConfig" class="px-4 py-2 bg-blue-500 text-white rounded">保存</button>
+      </div>
+    </div>
+
+    <div v-if="showAddNovel" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg p-6 w-80">
+        <div class="font-bold mb-4">新建小说</div>
+        <input v-model="newNovelTitle" @keydown.enter="createNovel" class="w-full border rounded p-2 mb-4" placeholder="小说标题" />
+        <div class="flex justify-end gap-2">
+          <button @click="showAddNovel = false" class="px-4 py-2 border rounded">取消</button>
+          <button @click="createNovel" class="px-4 py-2 bg-blue-500 text-white rounded">创建</button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="showAddFlowModal && store.currentNovel" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg p-6 w-96">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="font-bold text-lg">添加创作流程</h3>
+          <button @click="showAddFlowModal = false" class="text-gray-400 hover:text-gray-600">×</button>
+        </div>
+        <div>
+          <input v-model="newFlowName" class="w-full border rounded p-2 mb-2" placeholder="流程名称" />
+          <textarea v-model="newFlowPrompt" class="w-full border rounded p-2 mb-3" placeholder="提示词前缀" rows="3"></textarea>
+          <button @click="addCustomFlow" :disabled="!newFlowName.trim()" class="w-full py-2 bg-blue-500 text-white rounded">添加</button>
         </div>
       </div>
     </div>
   </div>
-
-  <!-- 添加流程弹窗 -->
-  <div v-if="showAddFlowModal && store.currentNovel" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg p-6 w-96 dark:bg-gray-800 dark:text-white">
-      <div class="flex justify-between items-center mb-4">
-        <h3 class="font-bold text-lg">添加创作流程</h3>
-        <button @click="showAddFlowModal = false" class="text-gray-400 hover:text-gray-600">×</button>
-      </div>
-      <div class="mb-4">
-        <p class="text-sm font-medium mb-2">从预设选择</p>
-        <div class="space-y-2">
-          <div v-for="template in store.writingFlows" :key="template.id"
-            class="p-3 border rounded cursor-pointer hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-gray-700"
-            @click="addFromTemplate(template.id)">
-            <div class="font-medium">{{ template.name }}</div>
-          </div>
-        </div>
-      </div>
-      <div class="flex items-center my-4">
-        <div class="flex-1 border-t"></div>
-        <span class="px-3 text-sm text-gray-400">或新建自定义</span>
-        <div class="flex-1 border-t"></div>
-      </div>
-      <div>
-        <p class="text-sm font-medium mb-2">自定义流程</p>
-        <input v-model="newFlowName" class="w-full border rounded p-2 mb-2 dark:bg-gray-700 dark:border-gray-600" placeholder="流程名称" />
-        <textarea v-model="newFlowPrompt" class="w-full border rounded p-2 mb-3 dark:bg-gray-700 dark:border-gray-600" placeholder="提示词前缀（可选）" rows="3" />
-        <button @click="addCustomFlow" :disabled="!newFlowName.trim()"
-          class="w-full py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300">添加</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- 提示词编辑弹窗 -->
-  <div v-if="showPromptEdit && store.currentNovel && store.currentFlow" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg p-6 w-[500px] dark:bg-gray-800 dark:text-white">
-      <div class="flex justify-between items-center mb-4">
-        <h3 class="font-bold text-lg">提示词配置 - {{ currentFlowName }}</h3>
-        <button @click="showPromptEdit = false" class="text-gray-400 hover:text-gray-600">×</button>
-      </div>
-      <p class="text-sm text-gray-500 mb-2">此提示词会自动添加到节点对话的开头</p>
-      <textarea v-model="currentFlowPrompt" class="w-full border rounded p-2 mb-4 dark:bg-gray-700 dark:border-gray-600" rows="6" />
-      <div class="flex justify-end gap-2">
-        <button @click="showPromptEdit = false" class="px-4 py-2 border rounded hover:bg-gray-100">取消</button>
-        <button @click="savePrompt" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">保存</button>
-      </div>
-    </div>
-  </div>
-</div>
-</template>
-
-<script setup lang="ts">
+</template><script setup lang="ts">
 import { ref, onMounted, nextTick, watch, computed } from 'vue'
-import { Copy, Trash2, ChevronDown, Edit2 } from 'lucide-vue-next'
+import { Copy, Trash2, ChevronDown, ChevronUp, Edit2 } from 'lucide-vue-next'
 import { useChatStore } from './stores/chat'
 import type { Novel, NovelSetting } from './stores/chat'
 
@@ -484,7 +218,7 @@ onMounted(async () => {
     // 自动展开第一个分类
     const firstSub = currentSubCategories.value[0]
     if (firstSub) {
-      expandedSubCategory.value = firstSub
+      expandedSubCategories.value.add(firstSub)
     }
     showNovelDetail.value = true
   }
@@ -604,12 +338,47 @@ const expandedSettings = ref<Set<number>>(new Set())
 const editingTitle = ref('')
 const editingContent = ref('')
 const showAddSetting = ref(false)
-const expandedSubCategory = ref('')
+const expandedSubCategories = ref<Set<string>>(new Set())
 const newSettingTitle = ref('')
 const newSettingContent = ref('')
 
+// 每个展开设定的独立编辑状态
+const editingStates = ref<Map<number, { title: string; content: string }>>(new Map())
+
+const getEditingState = (id: number, field: 'title' | 'content', defaultValue: string): string => {
+  const state = editingStates.value.get(id)
+  if (state && state[field] !== undefined && state[field] !== '') {
+    return state[field]
+  }
+  return defaultValue
+}
+
+const updateEditingState = (id: number, field: 'title' | 'content', value: string) => {
+  const current = editingStates.value.get(id) || { title: '', content: '' }
+  editingStates.value.set(id, { ...current, [field]: value })
+}
+
+const handleTitleChange = (id: number, event: Event) => {
+  const value = (event.target as HTMLInputElement).value
+  updateEditingState(id, 'title', value)
+}
+
+const handleContentChange = (id: number, event: Event) => {
+  const value = (event.target as HTMLTextAreaElement).value
+  updateEditingState(id, 'content', value)
+}
+
+const collapseSetting = (id: number) => {
+  expandedSettings.value.delete(id)
+  editingStates.value.delete(id)
+}
+
 const toggleSubCategory = (sub: string) => {
-  expandedSubCategory.value = expandedSubCategory.value === sub ? '' : sub
+  if (expandedSubCategories.value.has(sub)) {
+    expandedSubCategories.value.delete(sub)
+  } else {
+    expandedSubCategories.value.add(sub)
+  }
 }
 
 const currentSubCategories = computed(() => {
@@ -627,7 +396,7 @@ const switchSettingTab = async (tab: string) => {
   settingTab.value = tab
   settingSubCategory.value = ''
   expandedSettings.value.clear()
-  expandedSubCategory.value = ''
+  expandedSubCategories.value.clear()
   if (store.currentNovel) {
     await store.fetchNovelSettings(store.currentNovel.id, tab)
   }
@@ -652,25 +421,34 @@ const addNewSubCategory = async () => {
 const toggleEditSetting = (setting: NovelSetting) => {
   if (expandedSettings.value.has(setting.id)) {
     expandedSettings.value.delete(setting.id)
+    editingStates.value.delete(setting.id)
   } else {
     expandedSettings.value.add(setting.id)
+    // 初始化编辑状态
+    editingStates.value.set(setting.id, {
+      title: setting.title,
+      content: typeof setting.content === 'string' ? setting.content : ''
+    })
   }
-  editingTitle.value = setting.title
-  editingContent.value = typeof setting.content === 'string' ? setting.content : ''
 }
 
 const saveSetting = async () => {
   if (!store.currentNovel) return
-  // 获取当前正在编辑的ID
-  const editingId = Array.from(expandedSettings.value).pop()
-  if (!editingId) return
-  // content 直接作为字符串存储
-  await store.updateNovelSetting(store.currentNovel.id, editingId, {
-    title: editingTitle.value,
-    content: editingContent.value
-  }, settingTab.value)
+  // 保存所有展开的设定
+  for (const id of expandedSettings.value) {
+    const state = editingStates.value.get(id)
+    if (state) {
+      await store.updateNovelSetting(store.currentNovel.id, id, {
+        title: state.title,
+        content: state.content
+      }, settingTab.value)
+    }
+  }
   // 刷新数据
   await store.fetchNovelSettings(store.currentNovel.id, settingTab.value)
+  // 清除展开状态
+  expandedSettings.value.clear()
+  editingStates.value.clear()
 }
 
 const confirmDeleteSetting = async (id: number) => {
@@ -730,7 +508,7 @@ const renameSubCategory = async (subCategory: string) => {
       sub_category: newName
     }, settingTab.value)
   }
-  expandedSubCategory.value = newName
+  expandedSubCategories.value.add(newName)
   // 刷新数据
   await store.fetchNovelSettings(store.currentNovel.id, settingTab.value)
 }
