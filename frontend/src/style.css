@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -7,32 +9,38 @@ html, body, #app {
   margin: 0;
 }
 
-/* CSS 变量：浅色模式 */
+/* 护眼暖色调设计系统 - 浅色模式 */
 :root {
-  --bg-primary: #ffffff;
-  --bg-secondary: #f8fafc;
-  --bg-tertiary: #f1f5f9;
-  --text-primary: #1e293b;
-  --text-secondary: #64748b;
-  --border-color: #e2e8f0;
-  --user-msg-bg: #3b82f6;
-  --ai-msg-bg: #f1f5f9;
-  --hover-bg: #e2e8f0;
+  --bg-primary: #fdfbf7;
+  --bg-secondary: #f8f5ee;
+  --bg-tertiary: #f0ebe3;
+  --text-primary: #3d3229;
+  --text-secondary: #6b5f52;
+  --text-muted: #9c9080;
+  --border-color: #e5dfd3;
+  --user-msg-bg: #5c4f3d;
+  --ai-msg-bg: #f0ebe3;
+  --hover-bg: #e8e2d6;
   --input-bg: #ffffff;
+  --accent: #b8956a;
+  --accent-hover: #a67d52;
 }
 
-/* CSS 变量：深色模式 */
+/* 护眼暖色调设计系统 - 深色模式 */
 .dark {
-  --bg-primary: #1a1a2e;
-  --bg-secondary: #16213e;
-  --bg-tertiary: #1f2937;
-  --text-primary: #e2e8f0;
-  --text-secondary: #94a3b8;
-  --border-color: #2d3a5c;
-  --user-msg-bg: #6366f1;
-  --ai-msg-bg: #2d3a5c;
-  --hover-bg: #2d3a5c;
-  --input-bg: #1f2937;
+  --bg-primary: #1e1a14;
+  --bg-secondary: #252016;
+  --bg-tertiary: #2d261c;
+  --text-primary: #f0ebe3;
+  --text-secondary: #a99c8a;
+  --text-muted: #6b5f52;
+  --border-color: #3d3229;
+  --user-msg-bg: #c9a86c;
+  --ai-msg-bg: #2d261c;
+  --hover-bg: #352d20;
+  --input-bg: #252016;
+  --accent: #c9a86c;
+  --accent-hover: #d4b87a;
 }
 
 /* 使用 CSS 变量的全局样式 */
@@ -89,7 +97,29 @@ body {
   border-color: var(--border-color);
 }
 
-.dark .hover\:border-blue-400:hover {
-  border-color: #60a5fa;
-  color: #60a5fa;
+.dark .hover\:border-gray-400:hover {
+  border-color: #a99c8a;
+  color: #a99c8a;
+}
+
+/* 极简风格过渡效果 */
+* {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, opacity 0.2s ease;
+}
+
+/* 消息气泡 - 用户消息暖色调 */
+.message-user {
+  background-color: var(--user-msg-bg);
+  color: #fdfbf7;
+}
+
+.dark .message-user {
+  background-color: var(--user-msg-bg);
+  color: #1e1a14;
+}
+
+/* 消息气泡 - AI消息暖色调 */
+.message-assistant {
+  background-color: var(--ai-msg-bg);
+  color: var(--text-primary);
 }

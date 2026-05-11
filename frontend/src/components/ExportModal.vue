@@ -1,10 +1,10 @@
 <template>
   <div v-if="show" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="emit('close')">
-    <div class="bg-white rounded-lg w-[600px] max-h-[80vh] overflow-hidden flex flex-col">
+    <div class="bg-white dark:bg-gray-900 rounded-lg w-[600px] max-h-[80vh] overflow-hidden flex flex-col">
       <!-- Header -->
-      <div class="flex items-center justify-between p-4 border-b">
-        <span class="font-bold">导出《{{ novelTitle }}》设定集</span>
-        <button @click="emit('close')" class="text-gray-400 hover:text-gray-600 text-xl">×</button>
+      <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800">
+        <span class="font-['Archivo'] font-semibold text-gray-900 dark:text-white">导出《{{ novelTitle }}》设定集</span>
+        <button @click="emit('close')" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl transition-colors duration-200">×</button>
       </div>
 
       <!-- Body -->
@@ -13,15 +13,15 @@
         <div class="space-y-1">
           <div v-for="tab in tabs" :key="tab.category">
             <!-- Tab 行 -->
-            <div class="flex items-center gap-2 py-2 border-b">
+            <div class="flex items-center gap-2 py-2 border-b border-gray-100 dark:border-gray-800">
               <input
                 type="checkbox"
                 :checked="tab.allSelected"
                 :indeterminate="tab.someSelected && !tab.allSelected"
                 @change="toggleTabAll(tab, $event.target.checked)"
-                class="w-4 h-4"
+                class="w-4 h-4 rounded border-gray-300 dark:border-gray-600"
               />
-              <span class="font-medium">{{ tab.category }}</span>
+              <span class="font-medium text-gray-800 dark:text-gray-200">{{ tab.category }}</span>
             </div>
 
             <!-- 子分类和条目 -->
@@ -34,15 +34,15 @@
                     :checked="sub.allSelected"
                     :indeterminate="sub.someSelected && !sub.allSelected"
                     @change="toggleSubAll(sub, $event.target.checked)"
-                    class="w-4 h-4"
+                    class="w-4 h-4 rounded border-gray-300 dark:border-gray-600"
                   />
-                  <span class="text-sm">{{ sub.name }}</span>
+                  <span class="text-sm text-gray-600 dark:text-gray-400">{{ sub.name }}</span>
                 </div>
                 <!-- 条目 -->
                 <div class="ml-8 space-y-1">
-                  <label v-for="item in sub.settings" :key="item.id" class="flex items-center gap-2 py-1 hover:bg-gray-50">
-                    <input type="checkbox" v-model="item.selected" class="w-4 h-4" />
-                    <span class="text-sm">{{ item.title }}</span>
+                  <label v-for="item in sub.settings" :key="item.id" class="flex items-center gap-2 py-1 hover:bg-gray-50 dark:hover:bg-gray-800 rounded transition-colors duration-200 cursor-pointer">
+                    <input type="checkbox" v-model="item.selected" class="w-4 h-4 rounded border-gray-300 dark:border-gray-600" />
+                    <span class="text-sm text-gray-700 dark:text-gray-300">{{ item.title }}</span>
                   </label>
                 </div>
               </div>
@@ -57,10 +57,10 @@
       </div>
 
       <!-- Footer -->
-      <div class="flex justify-end gap-2 p-4 border-t">
-        <button @click="emit('close')" class="px-4 py-2 border rounded">取消</button>
-        <button @click="exportJSON" class="px-4 py-2 bg-blue-500 text-white rounded">导出JSON</button>
-        <button @click="exportMarkdown" class="px-4 py-2 bg-green-500 text-white rounded">导出Markdown</button>
+      <div class="flex justify-end gap-2 p-4 border-t border-gray-200 dark:border-gray-800">
+        <button @click="emit('close')" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200">取消</button>
+        <button @click="exportJSON" class="px-4 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded hover:opacity-90 transition-opacity duration-200">导出JSON</button>
+        <button @click="exportMarkdown" class="px-4 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded hover:opacity-90 transition-opacity duration-200">导出Markdown</button>
       </div>
     </div>
   </div>
@@ -331,177 +331,8 @@ function exportMarkdown() {
   background-color: rgba(0, 0, 0, 0.5);
 }
 
-.flex {
-  display: flex;
-}
-
-.items-center {
-  align-items: center;
-}
-
-.justify-center {
-  justify-content: center;
-}
-
-.justify-between {
-  justify-content: space-between;
-}
-
-.justify-end {
-  justify-content: flex-end;
-}
-
-.gap-2 {
-  gap: 0.5rem;
-}
-
-.gap-4 {
-  gap: 1rem;
-}
-
 .z-50 {
   z-index: 50;
-}
-
-.bg-white {
-  background-color: white;
-}
-
-.rounded-lg {
-  border-radius: 0.5rem;
-}
-
-.w-\[600px\] {
-  width: 600px;
-}
-
-.max-h-\[80vh\] {
-  max-height: 80vh;
-}
-
-.overflow-hidden {
-  overflow: hidden;
-}
-
-.overflow-y-auto {
-  overflow-y: auto;
-}
-
-.flex-col {
-  flex-direction: column;
-}
-
-.p-4 {
-  padding: 1rem;
-}
-
-.px-2 {
-  padding-left: 0.5rem;
-  padding-right: 0.5rem;
-}
-
-.px-3 {
-  padding-left: 0.75rem;
-  padding-right: 0.75rem;
-}
-
-.px-4 {
-  padding-left: 1rem;
-  padding-right: 1rem;
-}
-
-.py-1 {
-  padding-top: 0.25rem;
-  padding-bottom: 0.25rem;
-}
-
-.py-2 {
-  padding-top: 0.5rem;
-  padding-bottom: 0.5rem;
-}
-
-.mb-4 {
-  margin-bottom: 1rem;
-}
-
-.ml-4 {
-  margin-left: 1rem;
-}
-
-.ml-6 {
-  margin-left: 1.5rem;
-}
-
-.border {
-  border: 1px solid #e5e7eb;
-}
-
-.border-b {
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.border-t {
-  border-top: 1px solid #e5e7eb;
-}
-
-.bg-gray-50 {
-  background-color: #f9fafb;
-}
-
-.bg-gray-100 {
-  background-color: #f3f4f6;
-}
-
-.font-bold {
-  font-weight: 700;
-}
-
-.font-medium {
-  font-weight: 500;
-}
-
-.text-sm {
-  font-size: 0.875rem;
-}
-
-.text-xl {
-  font-size: 1.25rem;
-}
-
-.text-gray-400 {
-  color: #9ca3af;
-}
-
-.text-gray-600 {
-  color: #4b5563;
-}
-
-.text-white {
-  color: white;
-}
-
-.hover\:text-gray-600:hover {
-  color: #4b5563;
-}
-
-.hover\:bg-gray-50:hover {
-  background-color: #f9fafb;
-}
-
-.w-4 {
-  width: 1rem;
-}
-
-.h-4 {
-  height: 1rem;
-}
-
-.space-y-1 > * + * {
-  margin-top: 0.25rem;
-}
-
-.space-y-2 > * + * {
-  margin-top: 0.5rem;
 }
 
 .cursor-pointer {
@@ -510,17 +341,5 @@ function exportMarkdown() {
 
 button {
   cursor: pointer;
-}
-
-.bg-blue-500 {
-  background-color: #3b82f6;
-}
-
-.bg-green-500 {
-  background-color: #22c55e;
-}
-
-.rounded {
-  border-radius: 0.25rem;
 }
 </style>
