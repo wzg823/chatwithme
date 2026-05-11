@@ -32,8 +32,14 @@
     <!-- Middle: 对话区 -->
     <div class="flex-1 flex flex-col">
       <div class="h-14 border-b border-gray-200 flex items-center px-4 justify-between">
-        <span class="font-medium">{{ store.currentNovel?.title || '选择小说开始创作' }}</span>
         <div class="flex items-center gap-2">
+          <span class="font-medium">{{ store.currentNovel?.title || '选择小说开始创作' }}</span>
+          <span v-if="currentFlowName" class="text-gray-400">/</span>
+          <span v-if="currentFlowName" class="text-blue-600 font-medium">{{ currentFlowName }}</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button v-if="currentFlowName" @click="openPromptEdit" class="px-2 py-1 text-sm border rounded hover:bg-gray-100">提示词</button>
+          <button v-if="currentFlowName" @click="exitNodeChat" class="px-2 py-1 text-sm border rounded hover:bg-gray-100">退出节点</button>
           <button @click="toggleDark" class="p-1.5 rounded hover:bg-gray-100" title="切换深色模式">
             <Sun v-if="!isDark" class="w-5 h-5" />
             <Moon v-else class="w-5 h-5" />
@@ -52,7 +58,6 @@
             <h2 class="text-xl font-semibold mb-1">📚 《{{ store.currentNovel?.title }}》</h2>
             <p class="text-sm text-gray-500">创建于 {{ store.currentNovel?.created_at?.split('T')[0] }}</p>
           </div>
-          <button @click="backToList" class="px-3 py-1 border rounded hover:bg-gray-100">← 返回</button>
         </div>
         <div class="grid grid-cols-3 gap-4">
           <div v-for="flow in store.novelFlows.filter(f => f.enabled)" :key="flow.id"
@@ -316,12 +321,28 @@
       </div>
     </div>
   </div>
+
+  <!-- 提示词编辑弹窗 -->
+  <div v-if="showPromptEdit && store.currentNovel && store.currentFlow" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 w-[500px] dark:bg-gray-800 dark:text-white">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="font-bold text-lg">提示词配置 - {{ currentFlowName }}</h3>
+        <button @click="showPromptEdit = false" class="text-gray-400 hover:text-gray-600">×</button>
+      </div>
+      <p class="text-sm text-gray-500 mb-2">此提示词会自动添加到节点对话的开头</p>
+      <textarea v-model="currentFlowPrompt" class="w-full border rounded p-2 mb-4 dark:bg-gray-700 dark:border-gray-600" rows="6" />
+      <div class="flex justify-end gap-2">
+        <button @click="showPromptEdit = false" class="px-4 py-2 border rounded hover:bg-gray-100">取消</button>
+        <button @click="savePrompt" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">保存</button>
+      </div>
+    </div>
   </div>
+</div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick, watch } from 'vue'
-import { Sun, Moon, Copy } from 'lucide-vue-next'
+import { ref, onMounted, nextTick, watch, computed } from 'vue'
+import { Copy } from 'lucide-vue-next'
 import { useChatStore } from './stores/chat'
 import type { Novel } from './stores/chat'
 
@@ -365,10 +386,11 @@ onMounted(async () => {
   await store.fetchSystemConfig()
   await store.fetchWritingFlows()
   selectedModel.value = store.systemConfig.model
-  // 自动选择第一个小说并加载对话
+  // 自动选择第一个小说，进入详情页
   if (store.novels.length > 0) {
     await store.selectNovel(store.novels[0])
-    scrollToBottom()
+    await store.fetchNovelFlows(store.novels[0].id)
+    showNovelDetail.value = true
   }
 })
 
@@ -400,6 +422,32 @@ const hoveringFlow = ref<string | number | null>(null)
 const showAddFlowModal = ref(false)
 const newFlowName = ref('')
 const newFlowPrompt = ref('')
+const showPromptEdit = ref(false)
+const currentFlowPrompt = ref('')
+
+const currentFlowName = computed(() => {
+  if (!store.currentFlow) return ''
+  const flow = store.novelFlows.find(f => f.id === Number(store.currentFlow) || f.id === store.currentFlow)
+  return flow?.name || ''
+})
+
+const currentFlowPromptText = computed(() => {
+  if (!store.currentFlow) return ''
+  const flow = store.novelFlows.find(f => f.id === Number(store.currentFlow) || f.id === store.currentFlow)
+  return flow?.prompt || ''
+})
+
+const openPromptEdit = () => {
+  currentFlowPrompt.value = currentFlowPromptText.value
+  showPromptEdit.value = true
+}
+
+const savePrompt = async () => {
+  if (store.currentNovel && store.currentFlow) {
+    await store.updateNovelFlow(store.currentNovel.id, Number(store.currentFlow), { prompt: currentFlowPrompt.value })
+    showPromptEdit.value = false
+  }
+}
 
 const viewNovelDetail = async (novel?: Novel) => {
   if (novel) {
@@ -409,10 +457,6 @@ const viewNovelDetail = async (novel?: Novel) => {
     showNovelDetail.value = true
     await store.fetchNovelFlows(store.currentNovel.id)
   }
-}
-
-const backToList = () => {
-  showNovelDetail.value = false
 }
 
 const confirmDeleteFlow = async (flowId: number) => {
@@ -425,14 +469,16 @@ const enterNodeChat = async (flowId: string | number) => {
   const flow = store.novelFlows.find(f => f.id === flowId)
   if (flow) {
     store.currentFlow = String(flowId)
-    const tempFlow = { id: String(flowId), name: flow.name, prompt: flow.prompt || '', enabled: true }
-    const idx = store.writingFlows.findIndex(f => f.id === String(flowId))
-    if (idx >= 0) { store.writingFlows[idx] = tempFlow }
-    else { store.writingFlows.push(tempFlow) }
     showNovelDetail.value = false
     const res = await fetch(`/api/novels/${store.currentNovel.id}/messages?flow_type=${flowId}`)
     store.messages = await res.json()
   }
+}
+
+const exitNodeChat = async () => {
+  store.currentFlow = null
+  showNovelDetail.value = true
+  store.messages = []
 }
 
 const addFromTemplate = async (templateId: string) => {
@@ -476,8 +522,10 @@ const addFlow = () => {
   })
 }
 
-const removeFlow = (idx: number) => {
+const removeFlow = async (idx: number) => {
   store.writingFlows.splice(idx, 1)
+  // 删除后自动保存到后端
+  await store.saveWritingFlows()
 }
 
 const onModelChange = () => {

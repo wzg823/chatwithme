@@ -56,6 +56,15 @@ export const useChatStore = defineStore('chat', () => {
     novelFlows.value = novelFlows.value.filter(f => f.id !== flowId)
   }
 
+  const updateNovelFlow = async (novelId: number, flowId: number, updates: { name?: string; prompt?: string; enabled?: boolean }) => {
+    const res = await axios.put(`/api/novels/${novelId}/flows/${flowId}`, updates)
+    const idx = novelFlows.value.findIndex(f => f.id === flowId)
+    if (idx !== -1) {
+      novelFlows.value[idx] = res.data
+    }
+    return res.data
+  }
+
   const fetchedNovels = async () => {
     const res = await axios.get('/api/novels')
     novels.value = res.data
@@ -412,6 +421,7 @@ export const useChatStore = defineStore('chat', () => {
     novelFlows,
     fetchNovelFlows,
     addNovelFlow,
-    removeNovelFlow
+    removeNovelFlow,
+    updateNovelFlow
   }
 })
