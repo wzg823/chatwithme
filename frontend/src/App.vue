@@ -466,6 +466,7 @@ onMounted(async () => {
   if (store.novels.length > 0) {
     await store.selectNovel(store.novels[0])
     await store.fetchNovelFlows(store.novels[0].id)
+    await store.fetchNovelSettings(store.novels[0].id, settingTab.value)
     showNovelDetail.value = true
   }
 })
@@ -585,7 +586,7 @@ const editingTitle = ref('')
 const editingContent = ref('')
 const showAddSetting = ref(false)
 const newSettingTitle = ref('')
-const newSettingContent = ref('{}')
+const newSettingContent = ref('')
 
 const currentSubCategories = computed(() => {
   const cat = store.novelSettings[settingTab.value]
